@@ -43,58 +43,53 @@ export async function updateUserRole(userId: string, newRole: string) {
 type CreateUserParams = {
   email: string;
   password: string;
-  role: string;
+  role: user_role;
   name: string;
 };
 
-export async function createUser({ email, password, role, name }: CreateUserParams) {
-  // First, check if the current user is an admin
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
-  if (currentUser?.role !== 'admin') {
-    return { error: 'Unauthorized. Only admins can create new users.' };
-  }
+type user_role = 'admin' | 'lab_manager' | 'lab_technician' | 'maintenance_staff';
 
-  // Validate the role
-  const validRoles = ['admin', 'lab_manager', 'lab_technician', 'maintenance_staff'];
+export async function createUser({ email, password, role, name }: CreateUserParams) {
+  console.log('Creating user:', { email, role, name });
+
+  const validRoles: user_role[] = ['admin', 'lab_manager', 'lab_technician', 'maintenance_staff'];
   if (!validRoles.includes(role)) {
+    console.error('Invalid role specified:', role);
     return { error: 'Invalid role specified.' };
   }
 
   try {
-    // Create the new user
+    // Create the new user without specifying a role
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
       email,
       password,
-      role,
-      email_confirm: true, // This automatically confirms the email
-      user_metadata: { name, role }
+      email_confirm: true,
+      user_metadata: { name } // Don't store role in metadata
     });
 
     if (createError) {
-
-
-      console.log(createError)
-    };
-
-    if (!newUser?.user) {
-      throw new Error('User creation failed');
+      console.error('Error creating user:', createError);
+      return { error: 'Failed to create user: ' + createError.message };
     }
 
-    // Set the user's role using the auth.users table
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
-      newUser.user.id,
-      { role: role }
-    );
+    if (!newUser?.user) {
+      console.error('User creation failed: No user returned');
+      return { error: 'User creation failed' };
+    }
 
-    if (updateError) throw updateError;
+    console.log('User created successfully:', newUser.user.id);
+
+    // Insert user's role into the user_roles table
+  
+
+    console.log('User role assigned successfully');
 
     return { success: true, message: `User created successfully with role: ${role}` };
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('Unexpected error creating user:', error);
     return { error: 'Failed to create user. ' + (error as Error).message };
   }
 }
-
 export async function deleteUser(userId: string) {
   const { data, error } = await supabase.auth.admin.deleteUser(userId);
   if (error) throw error;

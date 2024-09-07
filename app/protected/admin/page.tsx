@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { createLaboratory, createUser, getLaboratories, getUsers } from "@/actions/admin"
+import { createLaboratory,  createUser,  getLaboratories, getUsers } from "@/actions/admin"
+import { toast } from "@/hooks/use-toast"
 
 type User = {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: user_role;
 }
 
 type Laboratory = {
@@ -37,6 +38,7 @@ export default function AdminDashboard() {
   const [email, setEmail] = useState("")
   const [users, setUsers] = useState<User[]>([])
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -44,42 +46,100 @@ export default function AdminDashboard() {
   }, [])
 
   const fetchUsers = async () => {
-    const fetchedUsers = await getUsers()
-    setUsers(fetchedUsers as User[])
+    try {
+      const fetchedUsers = await getUsers()
+      setUsers(fetchedUsers as User[])
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch users. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const fetchLaboratories = async () => {
-    const fetchedLabs = await getLaboratories()
-    setLaboratories(fetchedLabs)
+    try {
+      const fetchedLabs = await getLaboratories()
+      setLaboratories(fetchedLabs)
+    } catch (error) {
+      console.error('Error fetching laboratories:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch laboratories. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
-    await createUser({ email: username, password, role, name })
-    setUsername("")
-    setPassword("")
-    setRole("")
-    setName("")
-    fetchUsers()
+    setIsLoading(true)
+    try {
+      const result = await createUser({ email: username, password, role, name })
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+      } else if (result.success) {
+        toast({
+          title: "Success",
+          description: result.message,
+        })
+        setUsername("")
+        setPassword("")
+        setRole("")
+        setName("")
+        fetchUsers()
+      }
+    } catch (error) {
+      console.error('Error creating user:', error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleCreateLab = async (e: React.FormEvent) => {
     e.preventDefault()
-    await createLaboratory({
-      name: labName,
-      location_state: labState,
-      location_city: labCity,
-      manager_name: managerName,
-      contact_number: contactNumber,
-      email
-    })
-    setLabName("")
-    setLabState("")
-    setLabCity("")
-    setManagerName("")
-    setContactNumber("")
-    setEmail("")
-    fetchLaboratories()
+    setIsLoading(true)
+    try {
+      const result = await createLaboratory({
+        name: labName,
+        location_state: labState,
+        location_city: labCity,
+        manager_name: managerName,
+        contact_number: contactNumber,
+        email
+      })
+      toast({
+        title: "Success",
+        description: "Laboratory created successfully",
+      })
+      setLabName("")
+      setLabState("")
+      setLabCity("")
+      setManagerName("")
+      setContactNumber("")
+      setEmail("")
+      fetchLaboratories()
+    } catch (error) {
+      console.error('Error creating laboratory:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create laboratory. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -135,7 +195,9 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit">Create User</Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Creating..." : "Create User"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -201,7 +263,9 @@ export default function AdminDashboard() {
                   required
                 />
               </div>
-              <Button type="submit">Create Laboratory</Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Creating..." : "Create Laboratory"}
+              </Button>
             </form>
           </CardContent>
         </Card>
