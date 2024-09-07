@@ -1,34 +1,88 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { createLaboratory,  createUser,  getLaboratories, getUsers } from "@/actions/admin"
+import { createLaboratory, createUser, getLaboratories, getUsers } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { User, Laboratory, UserRole, CreateUserParams, CreateLaboratoryParams } from "@/types"
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: user_role;
-}
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-type Laboratory = {
-  lab_id: number;
-  name: string;
-  location_city: string;
-  location_state: string;
-  manager_name: string;
-}
+const UserRolesChart: React.FC<{ users: User[] }> = ({ users }) => {
+  const data = Object.entries(
+    users.reduce((acc, user) => {
+      acc[user.role] = (acc[user.role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>User Roles Distribution</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+};
+
+const LaboratoriesByStateChart: React.FC<{ laboratories: Laboratory[] }> = ({ laboratories }) => {
+  const data = Object.entries(
+    laboratories.reduce((acc, lab) => {
+      acc[lab.location_state] = (acc[lab.location_state] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([state, count]) => ({ state, count }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Laboratories by State</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="state" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="count" fill="#8884d8" />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function AdminDashboard() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [role, setRole] = useState("")
+  const [role, setRole] = useState<UserRole>("lab_technician")
   const [name, setName] = useState("")
   const [labName, setLabName] = useState("")
   const [labState, setLabState] = useState("")
@@ -47,8 +101,16 @@ export default function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const fetchedUsers = await getUsers()
-      setUsers(fetchedUsers as User[])
+      const supabaseUsers = await getUsers()
+      
+      const fetchedUsers: User[] = supabaseUsers.map((user: any) => ({
+        id: user.id,
+        name: user.user_metadata?.name || user.email.split('@')[0], // Fallback to email username if name is not available
+        email: user.email,
+        role: (user.user_metadata?.role || 'lab_technician') as UserRole
+      }))
+  
+      setUsers(fetchedUsers)
     } catch (error) {
       console.error('Error fetching users:', error)
       toast({
@@ -59,6 +121,7 @@ export default function AdminDashboard() {
     }
   }
 
+  
   const fetchLaboratories = async () => {
     try {
       const fetchedLabs = await getLaboratories()
@@ -77,21 +140,22 @@ export default function AdminDashboard() {
     e.preventDefault()
     setIsLoading(true)
     try {
-      const result = await createUser({ email: username, password, role, name })
-      if (result.error) {
+      const userParams: CreateUserParams = { email: username, password, role, name }
+      const result = await createUser(userParams)
+      if ('error' in result) {
         toast({
           title: "Error",
           description: result.error,
           variant: "destructive",
         })
-      } else if (result.success) {
+      } else {
         toast({
           title: "Success",
-          description: result.message,
+          description: "User created successfully",
         })
         setUsername("")
         setPassword("")
-        setRole("")
+        setRole("lab_technician")
         setName("")
         fetchUsers()
       }
@@ -111,14 +175,15 @@ export default function AdminDashboard() {
     e.preventDefault()
     setIsLoading(true)
     try {
-      const result = await createLaboratory({
+      const labParams: CreateLaboratoryParams = {
         name: labName,
         location_state: labState,
         location_city: labCity,
         manager_name: managerName,
         contact_number: contactNumber,
         email
-      })
+      }
+      await createLaboratory(labParams)
       toast({
         title: "Success",
         description: "Laboratory created successfully",
@@ -183,7 +248,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <Label htmlFor="role">Role</Label>
-                <Select onValueChange={setRole} value={role}>
+                <Select onValueChange={(value: UserRole) => setRole(value)} value={role}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
@@ -269,6 +334,11 @@ export default function AdminDashboard() {
             </form>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <UserRolesChart users={users} />
+        <LaboratoriesByStateChart laboratories={laboratories} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
