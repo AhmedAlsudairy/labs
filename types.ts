@@ -1,5 +1,4 @@
-export type UserRole = 'admin' | 'lab_manager' | 'lab_technician' | 'maintenance_staff';
-
+export type UserRole = 'admin' | 'cordinator' | 'lab in charge' | 'maintance staff';
 export type User = {
   id: string;
   name: string;
