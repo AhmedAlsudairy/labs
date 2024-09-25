@@ -7,6 +7,7 @@ import { Laboratory } from "@/types"
 import { deleteLaboratory } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
 import EditLabForm from "../forms/form-lab-edit"
+import Link from "next/link"
 
 interface LaboratoriesTableProps {
   laboratories: Laboratory[];
@@ -38,49 +39,53 @@ export default function LaboratoriesTable({ laboratories, onLabUpdated }: Labora
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Laboratories</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Manager</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {laboratories.map((lab) => (
-              <React.Fragment key={lab.lab_id}>
+    <CardHeader>
+      <CardTitle>Laboratories</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Location</TableHead>
+            <TableHead>Manager</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {laboratories.map((lab) => (
+            <React.Fragment key={lab.lab_id}>
+              <TableRow>
+                <TableCell>
+                  <Link href={`/protected/labs/${lab.lab_id}`} className="text-blue-600 hover:underline">
+                    {lab.name}
+                  </Link>
+                </TableCell>
+                <TableCell>{`${lab.location_city}, ${lab.location_state}`}</TableCell>
+                <TableCell>{lab.manager_name}</TableCell>
+                <TableCell>
+                  <Button onClick={() => setEditingLabId(lab.lab_id)} className="mr-2">Edit</Button>
+                  <Button onClick={() => handleDelete(lab.lab_id)} variant="destructive">Delete</Button>
+                </TableCell>
+              </TableRow>
+              {editingLabId === lab.lab_id && (
                 <TableRow>
-                  <TableCell>{lab.name}</TableCell>
-                  <TableCell>{`${lab.location_city}, ${lab.location_state}`}</TableCell>
-                  <TableCell>{lab.manager_name}</TableCell>
-                  <TableCell>
-                    <Button onClick={() => setEditingLabId(lab.lab_id)} className="mr-2">Edit</Button>
-                    <Button onClick={() => handleDelete(lab.lab_id)} variant="destructive">Delete</Button>
+                  <TableCell colSpan={4}>
+                    <EditLabForm 
+                      labId={lab.lab_id} 
+                      onLabUpdated={() => {
+                        setEditingLabId(null)
+                        onLabUpdated()
+                      }} 
+                    />
                   </TableCell>
                 </TableRow>
-                {editingLabId === lab.lab_id && (
-                  <TableRow>
-                    <TableCell colSpan={4}>
-                      <EditLabForm 
-                        labId={lab.lab_id} 
-                        onLabUpdated={() => {
-                          setEditingLabId(null)
-                          onLabUpdated()
-                        }} 
-                      />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+              )}
+            </React.Fragment>
+          ))}
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
   )
 }

@@ -17,13 +17,22 @@ export type Laboratory = {
 };
 
 // Equipment
+// Update this in your types file (e.g., @/types.ts)
+
 export type Equipment = {
-  id: number;
+  id: number | string;
   name: string;
   status: 'Operational' | 'Under Maintenance' | 'Out of Service';
+  model: string;
+  serialNumber: string;
+  description: string;
+  labSection: string;
+  manufacturer: string;
+  manufactureDate: string;
+  receiptDate: string;
+  supplier: string;
+  type: string;
 };
-
-// Staff
 export type Staff = {
   id: number;
   name: string;

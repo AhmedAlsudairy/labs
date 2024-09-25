@@ -2,7 +2,7 @@
 'use client'
 import React, { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-import { getUsers, getLaboratories } from "@/actions/admin"
+import { getLaboratories, getUsers,  } from "@/actions/admin"
 import { User, Laboratory, UserRole } from "@/types"
 import CreateUserForm from "@/components/forms/form-user"
 import LaboratoriesTable from "@/components/tables/lab-table"
