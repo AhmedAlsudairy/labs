@@ -1,7 +1,7 @@
 
 'use server';
 
-import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, } from '@/types';
+import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, } from '@/types';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -135,34 +135,13 @@ export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]
   if (error) throw error;
 
   return data.map(eq => ({
+    id: eq.equipment_id,
     name: eq.device[0]?.name || eq.type, // Fix: Access the first element of the device array
     usage: 100, // You might want to calculate this based on your actual data
   }));
 }
 
-export async function getMaintenanceRecords(labId: number): Promise<MaintenanceRecord[]> {
-  const { data, error } = await supabase
-    .from('maintenance_schedule')
-    .select(`
-      schedule_id,
-      next_date,
-      equipment!inner (
-        equipment_id,
-        type,
-        device (name)
-      )
-    `)
-    .eq('equipment.lab_id', labId);
 
-  if (error) throw error;
-
-  return data.map(record => ({
-    id: record.schedule_id,
-    date: record.next_date,
-    equipment: record.equipment?.[0]?.device?.[0]?.name || record.equipment?.[0]?.type, // Fix: Access the first element of the equipment array if it exists
-    description: 'Scheduled maintenance', // You might want to add a description field to your table
-  }));
-}
 
 export async function getStaff(labId: number): Promise<Staff[]> {
   const { data, error } = await supabase
@@ -266,32 +245,14 @@ export async function deleteEquipment(equipmentId: number): Promise<{ success: b
 
 
 
-export async function addMaintenanceRecord(recordData: Omit<MaintenanceRecord, 'id'>): Promise<MaintenanceRecord> {
-  const { data, error } = await supabase
-    .from('maintenance_schedule')
-    .insert({
-      equipment_id: recordData.equipment,
-      next_date: recordData.date,
-      frequency: 'One-time', // You might want to add this as a parameter
-    })
-    .select()
-    .single();
 
-  if (error) throw error;
-  return {
-    id: data.schedule_id,
-    date: data.next_date,
-    equipment: recordData.equipment,
-    description: recordData.description,
-  };
-}
 
 export async function updateMaintenanceRecord(recordId: number, recordData: Partial<MaintenanceRecord>): Promise<MaintenanceRecord> {
   const { data, error } = await supabase
     .from('maintenance_schedule')
     .update({
       next_date: recordData.date,
-      equipment_id: recordData.equipment,
+      equipment_id: recordData.equipmentId,
     })
     .eq('schedule_id', recordId)
     .select()
@@ -301,7 +262,7 @@ export async function updateMaintenanceRecord(recordId: number, recordData: Part
   return {
     id: data.schedule_id,
     date: data.next_date,
-    equipment: recordData.equipment!,
+    equipmentId: data.equipment_id,
     description: recordData.description || 'Scheduled maintenance',
   };
 }
@@ -317,3 +278,112 @@ export async function deleteMaintenanceRecord(recordId: number): Promise<{ succe
 }
 
 
+
+
+
+
+export async function getMaintenanceRecords(equipmentId: number): Promise<MaintenanceRecord[]> {
+  const { data, error } = await supabase
+    .from('maintenance_schedule')
+    .select('*')
+    .eq('equipment_id', equipmentId);
+
+  if (error) throw error;
+  return data.map(record => ({
+    id: record.schedule_id,
+    date: record.next_date,
+    equipmentId: record.equipment_id,
+    description: 'Scheduled maintenance',
+  }));
+}
+
+export async function getExternalControls(equipmentId: number): Promise<ExternalControl[]> {
+  const { data, error } = await supabase
+    .from('external_control')
+    .select('*')
+    .eq('device_id', equipmentId);
+
+  if (error) throw error;
+  return data.map(control => ({
+    id: control.control_id,
+    date: control.date,
+    result: control.result,
+    equipmentId: control.device_id,
+  }));
+}
+
+export async function getCalibrationData(equipmentId: number): Promise<CalibrationData[]> {
+  const { data, error } = await supabase
+    .from('calibration_schedule')
+    .select('*')
+    .eq('equipment_id', equipmentId);
+
+  if (error) throw error;
+  return data.map(calibration => ({
+    id: calibration.schedule_id,
+    date: calibration.next_date,
+    value: Math.random() * 100, // Replace this with actual calibration value when available
+    equipmentId: calibration.equipment_id,
+  }));
+}
+
+export async function addMaintenanceRecord(recordData: Omit<MaintenanceRecord, 'id'>): Promise<MaintenanceRecord> {
+  const { data, error } = await supabase
+    .from('maintenance_schedule')
+    .insert({
+      equipment_id: recordData.equipmentId,
+      next_date: recordData.date,
+      frequency: 'One-time', // You might want to add this as a parameter
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return {
+    id: data.schedule_id,
+    date: data.next_date,
+    equipmentId: data.equipment_id,
+    description: recordData.description,
+  };
+}
+
+
+// actions/admin.ts
+
+export async function getEquipmentById(equipmentId: number): Promise<Equipment> {
+  const { data, error } = await supabase
+    .from('equipment')
+    .select(`
+      *,
+      device (*)
+    `)
+    .eq('equipment_id', equipmentId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching equipment:', error);
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error('Equipment not found');
+  }
+
+  // Combine equipment and device data
+  const equipment: Equipment = {
+    id: data.equipment_id,
+    name: data.device?.name || data.type,
+    status: data.status,
+    model: data.device?.model || '',
+    serialNumber: data.device?.serial_number || '',
+    description: data.description || data.device?.description || '',
+    labSection: data.lab_section || '',
+    manufacturer: data.device?.manufacturer || '',
+    manufactureDate: data.device?.manufacture_date || '',
+    receiptDate: data.device?.receipt_date || '',
+    supplier: data.device?.supplier || '',
+    type: data.type,
+  };
+
+  return equipment;
+}

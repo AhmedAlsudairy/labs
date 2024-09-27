@@ -40,15 +40,12 @@ export type Staff = {
 };
 
 // Maintenance Record
-export type MaintenanceRecord = {
-  id: number;
-  date: string;
-  equipment: string;
-  description: string;
-};
+
 
 // Equipment Usage
 export type EquipmentUsage = {
+  id: number;
+
   name: string;
   usage: number;
 };
@@ -69,4 +66,28 @@ export type CreateLaboratoryParams = {
   manager_name: string;
   contact_number: string;
   email: string;
+};
+
+
+
+export type ExternalControl = {
+  id: number;
+  date: string;
+  result: number;
+  equipmentId: number;
+};
+
+export type CalibrationData = {
+  id: number;
+  date: string;
+  value: number;
+  equipmentId: number;
+};
+
+// types.ts
+export type MaintenanceRecord = {
+  id: number;
+  date: string;
+  equipmentId: number;
+  description: string;
 };
