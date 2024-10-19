@@ -9,6 +9,8 @@ import {
   getMaintenanceRecords,
   getStaff,
   addEquipment,
+  updateEquipment,
+  deleteEquipment,
   addMaintenanceRecord,
 } from "@/actions/admin";
 import { toast } from "@/hooks/use-toast";
@@ -125,6 +127,45 @@ export default function LaboratoryPage() {
     }
   };
 
+  const handleEquipmentEdit = async (
+    equipmentId: number,
+    equipmentData: Partial<Equipment>
+  ): Promise<void> => {
+    try {
+      await updateEquipment(equipmentId, equipmentData);
+      await fetchLabData();
+      toast({
+        title: "Success",
+        description: "Equipment updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error updating equipment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update equipment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEquipmentDelete = async (equipmentId: number): Promise<void> => {
+    try {
+      await deleteEquipment(equipmentId);
+      await fetchLabData();
+      toast({
+        title: "Success",
+        description: "Equipment deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting equipment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete equipment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleMaintenanceSubmit = async (
     maintenanceData: Omit<MaintenanceRecord, "id">
   ): Promise<void> => {
@@ -197,15 +238,17 @@ export default function LaboratoryPage() {
         labId={labId}
         equipment={labData.equipment}
         onAddEquipment={handleEquipmentSubmit}
+        onEditEquipment={handleEquipmentEdit}
+        onDeleteEquipment={handleEquipmentDelete}
       />
 
       <StaffSection staff={labData.staff} />
 
-       <MaintenanceSection
+      <MaintenanceSection
         maintenanceRecords={labData.maintenanceRecords}
         equipment={labData.equipment}
         onAddMaintenanceRecord={handleMaintenanceSubmit}
-      /> *
+      />
     </div>
   );
 }

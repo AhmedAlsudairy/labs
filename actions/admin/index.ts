@@ -9,7 +9,6 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// ... (keep the existing functions for user management)
 
 export async function updateUserRole(userId: string, newRole: UserRole) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -196,52 +195,6 @@ export async function addEquipment(labId: number, equipmentData: Omit<Equipment,
   };
 }
 
-export async function updateEquipment(equipmentId: number, equipmentData: Partial<Equipment>): Promise<Equipment> {
-  const { data, error } = await supabase
-    .from('equipment')
-    .update({ 
-      type: equipmentData.name,
-      status: equipmentData.status,
-      model: equipmentData.model,
-      serial_number: equipmentData.serialNumber,
-      description: equipmentData.description,
-      lab_section: equipmentData.labSection,
-      manufacturer: equipmentData.manufacturer,
-      manufacture_date: equipmentData.manufactureDate,
-      receipt_date: equipmentData.receiptDate,
-      supplier: equipmentData.supplier,
-    })
-    .eq('equipment_id', equipmentId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return {
-    id: data.equipment_id,
-    name: data.type,
-    status: data.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
-    model: data.model,
-    serialNumber: data.serial_number,
-    description: data.description,
-    labSection: data.lab_section,
-    manufacturer: data.manufacturer,
-    manufactureDate: data.manufacture_date,
-    receiptDate: data.receipt_date,
-    supplier: data.supplier,
-    type: data.type,
-  };
-}
-
-export async function deleteEquipment(equipmentId: number): Promise<{ success: boolean }> {
-  const { error } = await supabase
-    .from('equipment')
-    .delete()
-    .eq('equipment_id', equipmentId);
-
-  if (error) throw error;
-  return { success: true };
-}
-
 
 
 
@@ -350,40 +303,119 @@ export async function addMaintenanceRecord(recordData: Omit<MaintenanceRecord, '
 
 // actions/admin.ts
 
-export async function getEquipmentById(equipmentId: number): Promise<Equipment> {
-  const { data, error } = await supabase
-    .from('equipment')
-    .select(`
-      *,
-      device (*)
-    `)
-    .eq('equipment_id', equipmentId)
-    .single();
 
-  if (error) {
-    console.error('Error fetching equipment:', error);
+
+export async function getEquipmentById(equipmentId: number): Promise<Equipment> {
+  console.log(`[getEquipmentById] Fetching equipment with ID: ${equipmentId}`);
+
+  if (typeof equipmentId !== 'number' || isNaN(equipmentId) || equipmentId <= 0) {
+    const error = new Error(`Invalid equipment ID: ${equipmentId}`);
+    console.error('[getEquipmentById] Error:', error);
     throw error;
   }
 
-  if (!data) {
-    throw new Error('Equipment not found');
-  }
+  try {
+    console.time(`[getEquipmentById] Database query for equipment ${equipmentId}`);
+    const { data, error } = await supabase
+      .from('equipment')
+      .select(`
+        *,
+        device (*)
+      `)
+      .eq('equipment_id', equipmentId)
+      .single();
+    console.timeEnd(`[getEquipmentById] Database query for equipment ${equipmentId}`);
 
-  // Combine equipment and device data
-  const equipment: Equipment = {
+    if (error) {
+      console.error('[getEquipmentById] Supabase error:', error);
+      throw new Error(`Failed to fetch equipment: ${error.message}`);
+    }
+
+    if (!data) {
+      console.error(`[getEquipmentById] No equipment found with ID: ${equipmentId}`);
+      throw new Error(`Equipment not found for ID: ${equipmentId}`);
+    }
+
+    console.log('[getEquipmentById] Raw data from database:', JSON.stringify(data, null, 2));
+
+    // Extract device data (assuming there's only one device per equipment)
+    const deviceData = Array.isArray(data.device) && data.device.length > 0 ? data.device[0] : {};
+
+    // Helper function to get a string value or undefined
+    const getStringOrUndefined = (value: any): string | undefined => 
+      typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+
+    // Helper function to get a date string or undefined
+    const getDateOrUndefined = (value: any): string | undefined => 
+      value instanceof Date ? value.toISOString() : getStringOrUndefined(value);
+
+    // Combine equipment and device data
+    const equipment: Equipment = {
+      id: data.equipment_id,
+      name: getStringOrUndefined(deviceData.name || data.type) || 'Unknown Equipment',
+      status: (['Operational', 'Under Maintenance', 'Out of Service'].includes(data.status) ? data.status : 'Unknown Status') as 'Operational' | 'Under Maintenance' | 'Out of Service',
+      model: getStringOrUndefined(deviceData.model) || 'Unknown Model',
+      serialNumber: getStringOrUndefined(deviceData.serial_number) || 'Unknown Serial Number',
+      description: getStringOrUndefined(data.description || deviceData.description) || 'No description available',
+      labSection: getStringOrUndefined(data.lab_section || deviceData.lab_section) || 'Unassigned',
+      manufacturer: getStringOrUndefined(deviceData.manufacturer) || 'Unknown Manufacturer',
+      manufactureDate: getDateOrUndefined(deviceData.manufacture_date) || 'Unknown Date',
+      receiptDate: getDateOrUndefined(deviceData.receipt_date) || 'Unknown Date',
+      supplier: getStringOrUndefined(deviceData.supplier) || 'Unknown Supplier',
+      type: getStringOrUndefined(data.type) || 'Unknown Type',
+    };
+
+    console.log('[getEquipmentById] Processed equipment data:', JSON.stringify(equipment, null, 2));
+
+    return equipment;
+  } catch (error) {
+    console.error('[getEquipmentById] Unexpected error:', error);
+    throw new Error(`Failed to fetch equipment data: ${(error as Error).message}`);
+  }
+}
+
+export async function updateEquipment(equipmentId: number, equipmentData: Partial<Equipment>): Promise<Equipment> {
+  const { data, error } = await supabase
+    .from('equipment')
+    .update({ 
+      type: equipmentData.name,
+      status: equipmentData.status,
+      model: equipmentData.model,
+      serial_number: equipmentData.serialNumber,
+      description: equipmentData.description,
+      lab_section: equipmentData.labSection,
+      manufacturer: equipmentData.manufacturer,
+      manufacture_date: equipmentData.manufactureDate,
+      receipt_date: equipmentData.receiptDate,
+      supplier: equipmentData.supplier,
+    })
+    .eq('equipment_id', equipmentId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return {
     id: data.equipment_id,
-    name: data.device?.name || data.type,
-    status: data.status,
-    model: data.device?.model || '',
-    serialNumber: data.device?.serial_number || '',
-    description: data.description || data.device?.description || '',
-    labSection: data.lab_section || '',
-    manufacturer: data.device?.manufacturer || '',
-    manufactureDate: data.device?.manufacture_date || '',
-    receiptDate: data.device?.receipt_date || '',
-    supplier: data.device?.supplier || '',
+    name: data.type,
+    status: data.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
+    model: data.model,
+    serialNumber: data.serial_number,
+    description: data.description,
+    labSection: data.lab_section,
+    manufacturer: data.manufacturer,
+    manufactureDate: data.manufacture_date,
+    receiptDate: data.receipt_date,
+    supplier: data.supplier,
     type: data.type,
   };
+}
 
-  return equipment;
+export async function deleteEquipment(equipmentId: number): Promise<{ success: boolean }> {
+  const { error } = await supabase
+    .from('equipment')
+    .delete()
+    .eq('equipment_id', equipmentId);
+
+  if (error) throw error;
+  return { success: true };
 }

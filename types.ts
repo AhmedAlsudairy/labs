@@ -18,9 +18,8 @@ export type Laboratory = {
 
 // Equipment
 // Update this in your types file (e.g., @/types.ts)
-
 export type Equipment = {
-  id: number | string;
+  id: number;
   name: string;
   status: 'Operational' | 'Under Maintenance' | 'Out of Service';
   model: string;
@@ -33,6 +32,7 @@ export type Equipment = {
   supplier: string;
   type: string;
 };
+
 export type Staff = {
   id: number;
   name: string;
