@@ -34,8 +34,11 @@ export async function updateUserRole(userId: string, newRole: UserRole) {
   return { success: true, message: `User role updated to ${newRole}` };
 }
 
-export async function createUser({ email, password, role, name }: CreateUserParams) {
-  console.log('Creating user:', { email, role, name });
+// In actions/admin.ts
+export async function createUser({ email, password, role, name, metadata }: CreateUserParams
+  
+) {
+  console.log('Creating user:', { email, role, name, metadata });
 
   const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff'];
   if (!validRoles.includes(role)) {
@@ -48,7 +51,11 @@ export async function createUser({ email, password, role, name }: CreateUserPara
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role }
+      user_metadata: { 
+        name, 
+        role,
+        ...metadata 
+      }
     });
 
     if (createError) {
@@ -69,7 +76,6 @@ export async function createUser({ email, password, role, name }: CreateUserPara
     return { error: 'Failed to create user. ' + (error as Error).message };
   }
 }
-
 export async function deleteUser(userId: string) {
   const { data, error } = await supabase.auth.admin.deleteUser(userId);
   if (error) throw error;

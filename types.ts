@@ -56,6 +56,10 @@ export type CreateUserParams = {
   password: string;
   role: UserRole;
   name: string;
+  metadata?: {
+    governorate?: string;
+    labId?: string;
+  };
 };
 
 // CreateLaboratoryParams
