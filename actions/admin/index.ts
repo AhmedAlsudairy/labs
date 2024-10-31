@@ -1,7 +1,7 @@
 
 'use server';
 
-import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, } from '@/types';
+import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, } from '@/types';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -9,8 +9,14 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-
-export async function updateUserRole(userId: string, newRole: UserRole) {
+export async function updateUserRole(
+  userId: string, 
+  newRole: UserRole, 
+  metadata: { 
+    governorate?: string; 
+    labId?: string; 
+  }
+) {
   const { data: { user } } = await supabase.auth.getUser();
   if (user?.role !== 'admin') {
     return { error: 'Unauthorized. Only admins can update user roles.' };
@@ -21,17 +27,44 @@ export async function updateUserRole(userId: string, newRole: UserRole) {
     return { error: 'Invalid role specified.' };
   }
 
-  const { data, error } = await supabase.auth.admin.updateUserById(
-    userId,
-    { user_metadata: { role: newRole } }
-  );
-
-  if (error) {
-    console.error('Error updating user role:', error);
-    return { error: 'Failed to update user role.' };
+  // Validate metadata based on role
+  if (newRole === 'cordinator' && !metadata.governorate) {
+    return { error: 'Governorate must be specified for coordinator role.' };
   }
 
-  return { success: true, message: `User role updated to ${newRole}` };
+  if (newRole === 'lab in charge' && !metadata.labId) {
+    return { error: 'Laboratory must be specified for lab in charge role.' };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.updateUserById(
+      userId,
+      { 
+        user_metadata: { 
+          role: newRole,
+          ...(newRole === 'cordinator' && { governorate: metadata.governorate }),
+          ...(newRole === 'lab in charge' && { labId: metadata.labId }),
+        } 
+      }
+    );
+
+    if (error) {
+      console.error('Error updating user role:', error);
+      return { error: 'Failed to update user role.' };
+    }
+
+    return { 
+      success: true, 
+      message: `User role updated to ${newRole}${
+        metadata.governorate ? ` for ${metadata.governorate} governorate` : ''
+      }${
+        metadata.labId ? ` for laboratory ${metadata.labId}` : ''
+      }` 
+    };
+  } catch (error) {
+    console.error('Unexpected error updating user role:', error);
+    return { error: `Failed to update user role: ${(error as Error).message}` };
+  }
 }
 
 // In actions/admin.ts
@@ -165,13 +198,26 @@ export async function getStaff(labId: number): Promise<Staff[]> {
     role: 'Manager',
   }));
 }
-export async function addEquipment(labId: number, equipmentData: Omit<Equipment, 'id'>): Promise<Equipment> {
-  const { data, error } = await supabase
+// actions/admin.ts
+export async function addEquipment(labId: number, equipmentData: CreateEquipmentInput): Promise<Equipment> {
+  // Start a Supabase transaction
+  const { data: equipmentData_, error: equipmentError } = await supabase
     .from('equipment')
     .insert({ 
       lab_id: labId,
-      type: equipmentData.name,
-      status: equipmentData.status,
+      type: equipmentData.type,
+    })
+    .select()
+    .single();
+
+  if (equipmentError) throw equipmentError;
+
+  // Insert into device table
+  const { data: deviceData, error: deviceError } = await supabase
+    .from('device')
+    .insert({ 
+      equipment_id: equipmentData_.equipment_id,
+      name: equipmentData.name,
       model: equipmentData.model,
       serial_number: equipmentData.serialNumber,
       description: equipmentData.description,
@@ -180,28 +226,37 @@ export async function addEquipment(labId: number, equipmentData: Omit<Equipment,
       manufacture_date: equipmentData.manufactureDate,
       receipt_date: equipmentData.receiptDate,
       supplier: equipmentData.supplier,
+      istherecotntrol: false, // Add default value or make it part of CreateEquipmentInput
     })
     .select()
     .single();
 
-  if (error) throw error;
+  if (deviceError) {
+    // If device insertion fails, we should ideally delete the equipment entry
+    await supabase
+      .from('equipment')
+      .delete()
+      .eq('equipment_id', equipmentData_.equipment_id);
+    
+    throw deviceError;
+  }
+
+  // Return combined data
   return {
-    id: data.equipment_id,
-    name: data.type,
-    status: data.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
-    model: data.model,
-    serialNumber: data.serial_number,
-    description: data.description,
-    labSection: data.lab_section,
-    manufacturer: data.manufacturer,
-    manufactureDate: data.manufacture_date,
-    receiptDate: data.receipt_date,
-    supplier: data.supplier,
-    type: data.type,
+    id: equipmentData_.equipment_id,
+    name: deviceData.name,
+    status: equipmentData_.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
+    model: deviceData.model,
+    serialNumber: deviceData.serial_number,
+    description: deviceData.description,
+    labSection: deviceData.lab_section,
+    manufacturer: deviceData.manufacturer,
+    manufactureDate: deviceData.manufacture_date,
+    receiptDate: deviceData.receipt_date,
+    supplier: deviceData.supplier,
+    type: equipmentData_.type,
   };
 }
-
-
 
 
 

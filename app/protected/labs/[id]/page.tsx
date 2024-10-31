@@ -15,6 +15,7 @@ import {
 } from "@/actions/admin";
 import { toast } from "@/hooks/use-toast";
 import {
+  CreateEquipmentInput,
   Equipment,
   EquipmentUsage,
   Laboratory,
@@ -30,6 +31,9 @@ import { EquipmentSection } from "@/components/laboratory/EquipmentSection";
 import { StaffSection } from "@/components/laboratory/StaffSection";
 import { MaintenanceSection } from "@/components/laboratory/MaintenanceSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { IdCard } from "lucide-react";
 
 type FullLaboratoryDetails = Laboratory & {
   equipment: Equipment[];
@@ -43,6 +47,7 @@ export default function LaboratoryPage() {
   const labId = parseInt(params.id as string);
   const [labData, setLabData] = useState<FullLaboratoryDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLabData();
@@ -50,6 +55,7 @@ export default function LaboratoryPage() {
 
   const fetchLabData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [lab, equipmentUsage, maintenanceRecords, staff] =
         await Promise.all([
@@ -81,6 +87,7 @@ export default function LaboratoryPage() {
       });
     } catch (error) {
       console.error("Error fetching laboratory data:", error);
+      setError("Failed to fetch laboratory data. Please try again.");
       toast({
         title: "Error",
         description: "Failed to fetch laboratory data. Please try again.",
@@ -91,27 +98,10 @@ export default function LaboratoryPage() {
     }
   };
 
-  const handleEquipmentSubmit = async (
-    equipmentData: Partial<Equipment>
-  ): Promise<void> => {
+
+  const handleEquipmentSubmit = async (equipmentData: CreateEquipmentInput): Promise<void> => {
     try {
-      await addEquipment(labId, {
-        name: equipmentData.name || "",
-        status:
-          (equipmentData.status as
-            | "Operational"
-            | "Out of Service"
-            | "Under Maintenance") || "Operational",
-        model: equipmentData.model || "",
-        serialNumber: equipmentData.serialNumber || "",
-        description: equipmentData.description || "",
-        labSection: equipmentData.labSection || "",
-        manufacturer: equipmentData.manufacturer || "",
-        manufactureDate: equipmentData.manufactureDate || "",
-        receiptDate: equipmentData.receiptDate || "",
-        supplier: equipmentData.supplier || "",
-        type: equipmentData.type || "",
-      });
+      await addEquipment(labId, equipmentData);
       await fetchLabData();
       toast({
         title: "Success",
@@ -124,9 +114,12 @@ export default function LaboratoryPage() {
         description: "Failed to add equipment. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
+
+  
   const handleEquipmentEdit = async (
     equipmentId: number,
     equipmentData: Partial<Equipment>
@@ -145,6 +138,7 @@ export default function LaboratoryPage() {
         description: "Failed to update equipment. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
@@ -163,6 +157,7 @@ export default function LaboratoryPage() {
         description: "Failed to delete equipment. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
@@ -183,11 +178,16 @@ export default function LaboratoryPage() {
         description: "Failed to add maintenance record. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return  <Skeleton className="w-[100px] h-[20px] rounded-full" />
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={fetchLabData} />;
   }
 
   if (!labData) {
@@ -195,7 +195,7 @@ export default function LaboratoryPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 space-y-6">
       <LaboratoryHeader
         name={labData.name}
         locationCity={labData.location_city}
@@ -211,11 +211,13 @@ export default function LaboratoryPage() {
       <StatCards
         equipmentCount={labData.equipment.length}
         staffCount={labData.staff.length}
-        activeEquipmentCount={labData.equipmentUsage.length}
+        activeEquipmentCount={
+          labData.equipment.filter((eq) => eq.status === "Operational").length
+        }
         maintenanceRecordCount={labData.maintenanceRecords.length}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Equipment Status</CardTitle>
@@ -238,6 +240,7 @@ export default function LaboratoryPage() {
         labId={labId}
         equipment={labData.equipment}
         onAddEquipment={handleEquipmentSubmit}
+
         onEditEquipment={handleEquipmentEdit}
         onDeleteEquipment={handleEquipmentDelete}
       />
@@ -252,3 +255,36 @@ export default function LaboratoryPage() {
     </div>
   );
 }
+
+
+
+// Error State Component
+interface ErrorStateProps {
+  error: string;
+  onRetry: () => void;
+}
+
+function ErrorState({ error, onRetry }: ErrorStateProps) {
+  return (
+    <div className="container mx-auto p-4 text-center">
+      <div className="max-w-md mx-auto space-y-4">
+        <h2 className="text-2xl font-bold text-red-600">Error</h2>
+        <p className="text-gray-600">{error}</p>
+        <Button onClick={onRetry} variant="outline">
+          Try Again
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Add these types if not already defined
+interface ChartData {
+  labels: string[];
+  datasets: {
+    label: string;
+    data: number[];
+    backgroundColor: string[];
+  }[];
+}
+

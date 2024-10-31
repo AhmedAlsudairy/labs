@@ -4,6 +4,10 @@ export type User = {
   name: string;
   email: string;
   role: UserRole;
+  metadata?: {
+    governorate?: string;
+    labId?: string;
+  };
 };
 // Laboratory
 export type Laboratory = {
@@ -18,6 +22,7 @@ export type Laboratory = {
 
 // Equipment
 // Update this in your types file (e.g., @/types.ts)
+// types.ts
 export type Equipment = {
   id: number;
   name: string;
@@ -32,6 +37,10 @@ export type Equipment = {
   supplier: string;
   type: string;
 };
+
+// Add a new type for creating equipment
+export type CreateEquipmentInput = Omit<Equipment, 'id'>;
+
 
 export type Staff = {
   id: number;

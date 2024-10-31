@@ -1,100 +1,107 @@
 // components/laboratory/EquipmentSection.tsx
+'use client'
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Equipment } from '@/types';
-import DeviceMaintenanceForm from '../table/device-form';
-import { EditEquipmentForm } from './EditEquipmentForm';
-import { toast } from "@/hooks/use-toast";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../ui/pagination';
+import { useState } from 'react'
+import { Equipment, CreateEquipmentInput } from '@/types'
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "@/hooks/use-toast"
+import { Edit, Trash2, Plus } from 'lucide-react'
+import DeviceMaintenanceForm from '../table/device-form'
 
 interface EquipmentSectionProps {
   labId: number;
   equipment: Equipment[];
-  onAddEquipment: (equipmentData: Partial<Equipment>) => Promise<void>;
+  onAddEquipment: (equipmentData: CreateEquipmentInput) => Promise<void>;
   onEditEquipment: (equipmentId: number, equipmentData: Partial<Equipment>) => Promise<void>;
   onDeleteEquipment: (equipmentId: number) => Promise<void>;
 }
 
-export const EquipmentSection: React.FC<EquipmentSectionProps> = ({ 
-  labId, 
-  equipment, 
-  onAddEquipment, 
+export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
+  labId,
+  equipment,
+  onAddEquipment,
   onEditEquipment,
-  onDeleteEquipment 
+  onDeleteEquipment,
 }) => {
   const [showEquipmentForm, setShowEquipmentForm] = useState(false);
-  const [editingEquipmentId, setEditingEquipmentId] = useState<number | null>(null);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
-  const handleEdit = (equipmentId: number) => {
-    setEditingEquipmentId(equipmentId);
+  const handleAdd = () => {
+    setEditingEquipment(null);
+    setShowEquipmentForm(true);
+  };
+
+  const handleEdit = (equipment: Equipment) => {
+    setEditingEquipment(equipment);
+    setShowEquipmentForm(true);
   };
 
   const handleDelete = async (equipmentId: number) => {
     if (window.confirm('Are you sure you want to delete this equipment?')) {
-      setIsLoading(true);
       try {
         await onDeleteEquipment(equipmentId);
         toast({
           title: "Success",
-          description: "Equipment deleted successfully.",
+          description: "Equipment deleted successfully",
         });
       } catch (error) {
-        console.error("Error deleting equipment:", error);
+        console.error('Error deleting equipment:', error);
         toast({
           title: "Error",
-          description: "Failed to delete equipment. Please try again.",
+          description: "Failed to delete equipment",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
       }
     }
   };
 
-  const handleEditSubmit = async (equipmentData: Partial<Equipment>) => {
-    if (editingEquipmentId !== null) {
-      setIsLoading(true);
-      try {
-        await onEditEquipment(editingEquipmentId, equipmentData);
-        setEditingEquipmentId(null);
-        toast({
-          title: "Success",
-          description: "Equipment updated successfully.",
-        });
-      } catch (error) {
-        console.error("Error updating equipment:", error);
-        toast({
-          title: "Error",
-          description: "Failed to update equipment. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleAddEquipment = async (equipmentData: Partial<Equipment>) => {
+  const handleSubmit = async (values: CreateEquipmentInput) => {
     setIsLoading(true);
     try {
-      await onAddEquipment(equipmentData);
+      if (editingEquipment) {
+        await onEditEquipment(editingEquipment.id, values);
+        toast({
+          title: "Success",
+          description: "Equipment updated successfully",
+        });
+      } else {
+        await onAddEquipment(values);
+        toast({
+          title: "Success",
+          description: "Equipment added successfully",
+        });
+      }
       setShowEquipmentForm(false);
-      toast({
-        title: "Success",
-        description: "Equipment added successfully.",
-      });
+      setEditingEquipment(null);
     } catch (error) {
-      console.error("Error adding equipment:", error);
+      console.error('Error saving equipment:', error);
       toast({
         title: "Error",
-        description: "Failed to add equipment. Please try again.",
+        description: "Failed to save equipment",
         variant: "destructive",
       });
     } finally {
@@ -102,108 +109,127 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     }
   };
 
-  const totalPages = Math.ceil(equipment.length / itemsPerPage);
-  const paginatedEquipment = equipment.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'Operational':
+        return 'success';
+      case 'Under Maintenance':
+        return 'warning';
+      case 'Out of Service':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
 
   return (
-    <Card className="mb-6">
+    <Card>
       <CardHeader>
-        <CardTitle>Equipment</CardTitle>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Equipment</CardTitle>
+            <CardDescription>Manage laboratory equipment</CardDescription>
+          </div>
+          <Button onClick={handleAdd}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Equipment
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
-        <Button 
-          onClick={() => setShowEquipmentForm(!showEquipmentForm)} 
-          className="mb-4"
-          disabled={isLoading}
-        >
-          {showEquipmentForm ? 'Hide Form' : 'Add New Equipment'}
-        </Button>
-        {showEquipmentForm && (
-          <DeviceMaintenanceForm  />
+      {showEquipmentForm && (
+          <div className="mb-6">
+            <div className="bg-background p-6 rounded-lg border">
+              <h3 className="text-lg font-semibold mb-4">
+                {editingEquipment ? 'Edit Equipment' : 'Add New Equipment'}
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                {editingEquipment 
+                  ? 'Update the equipment details below.' 
+                  : 'Fill in the equipment details below.'}
+              </p>
+              <DeviceMaintenanceForm
+                labId={labId}
+                onSubmit={handleSubmit}
+                onCancel={() => {
+                  setShowEquipmentForm(false);
+                  setEditingEquipment(null);
+                }}
+                initialData={editingEquipment || undefined}
+              />
+            </div>
+          </div>
         )}
+
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead>Serial Number</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Lab Section</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedEquipment.map((eq) => (
-              <React.Fragment key={eq.id}>
-                <TableRow>
-                  <TableCell>{eq.name}</TableCell>
-                  <TableCell>{eq.status}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Link href={`/protected/labs/${labId}/${eq.id}`}>
-                        <Button variant="outline" size="sm">View</Button>
-                      </Link>
-                      <Button 
-                        onClick={() => handleEdit(eq.id)} 
-                        variant="outline" 
-                        size="sm"
-                        disabled={isLoading}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        onClick={() => handleDelete(eq.id)} 
-                        variant="destructive" 
-                        size="sm"
-                        disabled={isLoading}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-                {editingEquipmentId === eq.id && (
-                  <TableRow>
-                    <TableCell colSpan={3}>
-                      <EditEquipmentForm 
-                        equipment={eq} 
-                        onSubmit={handleEditSubmit} 
-                        onCancel={() => setEditingEquipmentId(null)} 
-                      />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
+            {equipment.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.name}</TableCell>
+                <TableCell>{item.model}</TableCell>
+                <TableCell>{item.serialNumber}</TableCell>
+                <TableCell>
+                  <Badge variant={getStatusBadgeVariant(item.status)}>
+                    {item.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{item.labSection}</TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
             ))}
           </TableBody>
         </Table>
-        <Pagination>
-  <PaginationContent>
-    <PaginationItem>
-      <PaginationPrevious 
-        href="#" 
-        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-      />
-    </PaginationItem>
-    {[...Array(totalPages)].map((_, index) => (
-      <PaginationItem key={index}>
-        <PaginationLink 
-          href="#" 
-          onClick={() => setCurrentPage(index + 1)}
-          isActive={currentPage === index + 1}
-        >
-          {index + 1}
-        </PaginationLink>
-      </PaginationItem>
-    ))}
-    <PaginationItem>
-      <PaginationNext 
-        href="#" 
-        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-      />
-    </PaginationItem>
-  </PaginationContent>
-</Pagination>
+
+        {/* <Dialog open={showEquipmentForm} onOpenChange={setShowEquipmentForm}>
+          <DialogContent className="max-w-4xl z-50">
+            <DialogHeader>
+              <DialogTitle>
+                {editingEquipment ? 'Edit Equipment' : 'Add New Equipment'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingEquipment 
+                  ? 'Update the equipment details below.' 
+                  : 'Fill in the equipment details below.'}
+              </DialogDescription>
+            </DialogHeader>
+            <DeviceMaintenanceForm
+              labId={labId}
+              onSubmit={handleSubmit}
+              onCancel={() => {
+                setShowEquipmentForm(false);
+                setEditingEquipment(null);
+              }}
+              initialData={editingEquipment || undefined}
+            />
+          </DialogContent>
+        </Dialog> */}
       </CardContent>
     </Card>
   );
