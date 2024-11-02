@@ -50,6 +50,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  console.log(equipment)
   const handleAdd = () => {
     setEditingEquipment(null);
     setShowEquipmentForm(true);

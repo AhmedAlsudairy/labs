@@ -159,28 +159,53 @@ export async function getUsers() {
   if (error) throw error;
   return users;
 }
-
 export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]> {
   const { data, error } = await supabase
     .from('equipment')
     .select(`
       equipment_id,
       type,
-      device (name)
+      device (
+        name,
+        model,
+        serial_number,
+        lab_section,
+        description,
+        manufacturer,
+        manufacture_date,
+        receipt_date,
+        supplier
+      )
     `)
     .eq('lab_id', labId);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching equipment usage:', error);
+    throw error;
+  }
 
-  return data.map(eq => ({
-    id: eq.equipment_id,
-    name: eq.device[0]?.name || eq.type, // Fix: Access the first element of the device array
-    usage: 100, // You might want to calculate this based on your actual data
-  }));
+  console.log('Raw equipment data:', data); // Debug log
+
+  return data.map(eq => {
+    const deviceData = eq.device?.[0] || {};
+    
+    return {
+      id: eq.equipment_id,
+      name: deviceData.name || eq.type,
+      model: deviceData.model || '',
+      serialNumber: deviceData.serial_number || '',
+      status: 'Operational', // Default status
+      labSection: deviceData.lab_section || '',
+      description: deviceData.description || '',
+      manufacturer: deviceData.manufacturer || '',
+      manufactureDate: deviceData.manufacture_date || '',
+      receiptDate: deviceData.receipt_date || '',
+      supplier: deviceData.supplier || '',
+      type: eq.type || '',
+      usage: 100 // You might want to calculate this based on your actual data
+    };
+  });
 }
-
-
-
 export async function getStaff(labId: number): Promise<Staff[]> {
   const { data, error } = await supabase
     .from('laboratory')

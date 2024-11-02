@@ -54,7 +54,16 @@ export type Staff = {
 // Equipment Usage
 export type EquipmentUsage = {
   id: number;
-
+  model: string;
+  serialNumber: string;
+  status: 'Operational' | 'Out of Service';
+  labSection: string;
+  description: string;
+  manufacturer: string;
+  manufactureDate: string;
+  receiptDate: string;
+  supplier: string;
+  type: string;
   name: string;
   usage: number;
 };
