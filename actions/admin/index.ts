@@ -282,7 +282,7 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
       serial_number: equipmentData.serialNumber,
       description: equipmentData.description,
       lab_section: equipmentData.labSection,
-
+      deviceData: equipmentData.status,
       manufacturer: equipmentData.manufacturer,
       manufacture_date: equipmentData.manufactureDate,
       receipt_date: equipmentData.receiptDate,
@@ -306,7 +306,7 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
   return {
     id: equipmentData_.equipment_id,
     name: deviceData.name,
-    status: equipmentData_.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
+    status: deviceData.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
     model: deviceData.model,
     serialNumber: deviceData.serial_number,
     description: deviceData.description,
