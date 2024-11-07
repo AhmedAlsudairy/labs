@@ -73,7 +73,7 @@ export default function LaboratoryPage() {
         equipment: equipmentUsage.map((eu) => ({
           id: eu.id,
           name: eu.name,
-          status: eu.usage > 0 ? "Operational" : "Out of Service",
+          status: eu.status,
           model: eu.model || '',
           serialNumber: eu.serialNumber || '',
           description: eu.description || '',

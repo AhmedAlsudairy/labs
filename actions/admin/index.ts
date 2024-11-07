@@ -9,6 +9,40 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+// async function updateUserAdminAndPassword() {
+//   const userId = '4db7586b-d73e-4357-aa79-799b6e70f7dd';
+  
+//   try {
+//     // Update role to admin
+//     const roleResult = await supabase.auth.admin.updateUserById(
+//       userId,
+//       { 
+//         user_metadata: { 
+//           role: 'admin'
+//         },
+//         role: 'admin'
+//       }
+//     );
+
+//     if (roleResult.error) {
+//       throw roleResult.error;
+//     }
+
+//     console.log('User updated successfully:', {
+//       role: 'admin',
+//       passwordUpdated: true
+//     });
+
+//   } catch (error) {
+//     console.error('Error updating user:', error);
+//   }
+// }
+
+// updateUserAdminAndPassword().catch(console.error);
+
+
+
+
 export async function updateUserRole(
   userId: string, 
   newRole: UserRole, 
@@ -39,9 +73,9 @@ export async function updateUserRole(
   try {
     const { data, error } = await supabase.auth.admin.updateUserById(
       userId,
-      { 
+      {
+        role: newRole, 
         user_metadata: { 
-          role: newRole,
           ...(newRole === 'cordinator' && { governorate: metadata.governorate }),
           ...(newRole === 'lab in charge' && { labId: metadata.labId }),
         } 
@@ -174,7 +208,8 @@ export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]
         manufacturer,
         manufacture_date,
         receipt_date,
-        supplier
+        supplier,
+        status
       )
     `)
     .eq('lab_id', labId);
@@ -194,7 +229,7 @@ export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]
       name: deviceData.name || eq.type,
       model: deviceData.model || '',
       serialNumber: deviceData.serial_number || '',
-      status: 'Operational', // Default status
+      status: deviceData.status || 'Operational',
       labSection: deviceData.lab_section || '',
       description: deviceData.description || '',
       manufacturer: deviceData.manufacturer || '',
@@ -247,6 +282,7 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
       serial_number: equipmentData.serialNumber,
       description: equipmentData.description,
       lab_section: equipmentData.labSection,
+
       manufacturer: equipmentData.manufacturer,
       manufacture_date: equipmentData.manufactureDate,
       receipt_date: equipmentData.receiptDate,
@@ -497,11 +533,62 @@ export async function updateEquipment(equipmentId: number, equipmentData: Partia
 }
 
 export async function deleteEquipment(equipmentId: number): Promise<{ success: boolean }> {
-  const { error } = await supabase
-    .from('equipment')
-    .delete()
-    .eq('equipment_id', equipmentId);
+  try {
+    // Start a transaction
+    const { error: transactionError } = await supabase.rpc('begin');
+    if (transactionError) throw transactionError;
 
-  if (error) throw error;
-  return { success: true };
+    try {
+      // Delete from calibration_schedule
+      const { error: calibrationError } = await supabase
+        .from('calibration_schedule')
+        .delete()
+        .eq('equipment_id', equipmentId);
+      if (calibrationError) throw calibrationError;
+
+      // Delete from maintenance_schedule
+      const { error: maintenanceError } = await supabase
+        .from('maintenance_schedule')
+        .delete()
+        .eq('equipment_id', equipmentId);
+      if (maintenanceError) throw maintenanceError;
+
+      // Delete from external_control
+      const { error: controlError } = await supabase
+        .from('external_control')
+        .delete()
+        .eq('device_id', equipmentId);
+      if (controlError) throw controlError;
+
+      // Delete from device
+      const { error: deviceError } = await supabase
+        .from('device')
+        .delete()
+        .eq('equipment_id', equipmentId);
+      if (deviceError) throw deviceError;
+
+      // Finally, delete the equipment
+      const { error: equipmentError } = await supabase
+        .from('equipment')
+        .delete()
+        .eq('equipment_id', equipmentId);
+      if (equipmentError) throw equipmentError;
+
+      // Commit the transaction
+      const { error: commitError } = await supabase.rpc('commit');
+      if (commitError) throw commitError;
+
+      return { success: true };
+    } catch (error) {
+      // Rollback on any error
+      const { error: rollbackError } = await supabase.rpc('rollback');
+      if (rollbackError) {
+        console.error('Error rolling back transaction:', rollbackError);
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error deleting equipment:', error);
+    throw new Error(`Failed to delete equipment: ${(error as Error).message}`);
+  }
 }

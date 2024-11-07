@@ -2,6 +2,7 @@
 import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Equipment } from '@/types';
+import { updateUserRole } from '@/actions/admin';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -40,3 +41,5 @@ export const EquipmentStatusChart: React.FC<EquipmentStatusChartProps> = ({ equi
     </ResponsiveContainer>
   );
 };
+
+updateUserRole
