@@ -282,7 +282,7 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
       serial_number: equipmentData.serialNumber,
       description: equipmentData.description,
       lab_section: equipmentData.labSection,
-      deviceData: equipmentData.status,
+      status: equipmentData.status,
       manufacturer: equipmentData.manufacturer,
       manufacture_date: equipmentData.manufactureDate,
       receipt_date: equipmentData.receiptDate,
