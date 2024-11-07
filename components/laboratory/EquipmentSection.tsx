@@ -1,23 +1,23 @@
 // components/laboratory/EquipmentSection.tsx
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Equipment, CreateEquipmentInput } from '@/types'
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { Equipment, CreateEquipmentInput } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -25,17 +25,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { toast } from "@/hooks/use-toast"
-import { Edit, Trash2, Plus } from 'lucide-react'
-import DeviceMaintenanceForm from '../table/device-form'
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import { Edit, Trash2, Plus } from "lucide-react";
+import DeviceMaintenanceForm from "../table/device-form";
+import Link from "next/link";
 
 interface EquipmentSectionProps {
   labId: number;
   equipment: Equipment[];
   onAddEquipment: (equipmentData: CreateEquipmentInput) => Promise<void>;
-  onEditEquipment: (equipmentId: number, equipmentData: Partial<Equipment>) => Promise<void>;
+  onEditEquipment: (
+    equipmentId: number,
+    equipmentData: Partial<Equipment>
+  ) => Promise<void>;
   onDeleteEquipment: (equipmentId: number) => Promise<void>;
 }
 
@@ -47,10 +51,12 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   onDeleteEquipment,
 }) => {
   const [showEquipmentForm, setShowEquipmentForm] = useState(false);
-  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log(equipment)
+  console.log(equipment);
   const handleAdd = () => {
     setEditingEquipment(null);
     setShowEquipmentForm(true);
@@ -62,7 +68,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   };
 
   const handleDelete = async (equipmentId: number) => {
-    if (window.confirm('Are you sure you want to delete this equipment?')) {
+    if (window.confirm("Are you sure you want to delete this equipment?")) {
       try {
         await onDeleteEquipment(equipmentId);
         toast({
@@ -70,7 +76,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           description: "Equipment deleted successfully",
         });
       } catch (error) {
-        console.error('Error deleting equipment:', error);
+        console.error("Error deleting equipment:", error);
         toast({
           title: "Error",
           description: "Failed to delete equipment",
@@ -99,7 +105,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
       setShowEquipmentForm(false);
       setEditingEquipment(null);
     } catch (error) {
-      console.error('Error saving equipment:', error);
+      console.error("Error saving equipment:", error);
       toast({
         title: "Error",
         description: "Failed to save equipment",
@@ -112,14 +118,14 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'Operational':
-        return 'success';
-      case 'Under Maintenance':
-        return 'warning';
-      case 'Out of Service':
-        return 'destructive';
+      case "Operational":
+        return "success";
+      case "Under Maintenance":
+        return "warning";
+      case "Out of Service":
+        return "destructive";
       default:
-        return 'secondary';
+        return "secondary";
     }
   };
 
@@ -138,16 +144,16 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-      {showEquipmentForm && (
+        {showEquipmentForm && (
           <div className="mb-6">
             <div className="bg-background p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">
-                {editingEquipment ? 'Edit Equipment' : 'Add New Equipment'}
+                {editingEquipment ? "Edit Equipment" : "Add New Equipment"}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {editingEquipment 
-                  ? 'Update the equipment details below.' 
-                  : 'Fill in the equipment details below.'}
+                {editingEquipment
+                  ? "Update the equipment details below."
+                  : "Fill in the equipment details below."}
               </p>
               <DeviceMaintenanceForm
                 labId={labId}
@@ -176,7 +182,14 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           <TableBody>
             {equipment.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.name}</TableCell>
+                <TableCell>
+                  <Link
+                    className="full-w"
+                    href={`/protected/labs/${labId}/${item.id}`}
+                  >
+                    {item.name}
+                  </Link>
+                </TableCell>
                 <TableCell>{item.model}</TableCell>
                 <TableCell>{item.serialNumber}</TableCell>
                 <TableCell>
