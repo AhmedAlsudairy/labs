@@ -29,7 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Edit, Trash2, Plus } from "lucide-react";
-import DeviceMaintenanceForm from "../table/device-form";
+import DeviceMaintenanceForm from "../main-form/device-form";
 import Link from "next/link";
 
 interface EquipmentSectionProps {

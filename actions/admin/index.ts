@@ -9,37 +9,6 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// async function updateUserAdminAndPassword() {
-//   const userId = '4db7586b-d73e-4357-aa79-799b6e70f7dd';
-  
-//   try {
-//     // Update role to admin
-//     const roleResult = await supabase.auth.admin.updateUserById(
-//       userId,
-//       { 
-//         user_metadata: { 
-//           role: 'admin'
-//         },
-//         role: 'admin'
-//       }
-//     );
-
-//     if (roleResult.error) {
-//       throw roleResult.error;
-//     }
-
-//     console.log('User updated successfully:', {
-//       role: 'admin',
-//       passwordUpdated: true
-//     });
-
-//   } catch (error) {
-//     console.error('Error updating user:', error);
-//   }
-// }
-
-// updateUserAdminAndPassword().catch(console.error);
-
 
 
 
@@ -534,10 +503,7 @@ export async function updateEquipment(equipmentId: number, equipmentData: Partia
 
 export async function deleteEquipment(equipmentId: number): Promise<{ success: boolean }> {
   try {
-    // Start a transaction
-    const { error: transactionError } = await supabase.rpc('begin');
-    if (transactionError) throw transactionError;
-
+    
     try {
       // Delete from calibration_schedule
       const { error: calibrationError } = await supabase
@@ -574,9 +540,7 @@ export async function deleteEquipment(equipmentId: number): Promise<{ success: b
         .eq('equipment_id', equipmentId);
       if (equipmentError) throw equipmentError;
 
-      // Commit the transaction
-      const { error: commitError } = await supabase.rpc('commit');
-      if (commitError) throw commitError;
+  
 
       return { success: true };
     } catch (error) {
