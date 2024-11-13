@@ -1,14 +1,37 @@
-"use client"
+"use client";
 
-import React from 'react';
-import { useParams } from 'next/navigation';
+import React from "react";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Building2, Users, Microscope, ClipboardList } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { Building2, Users, Microscope, ClipboardList } from "lucide-react";
 
 // Define all necessary types
-type UserRole = 'admin' | 'lab_manager' | 'lab_technician' | 'maintenance_staff';
+type UserRole =
+  | "admin"
+  | "lab_manager"
+  | "lab_technician"
+  | "maintenance_staff";
 
 type Laboratory = {
   lab_id: number;
@@ -25,7 +48,7 @@ type Equipment = {
   name: string;
   model: string;
   serialNumber: string;
-  status: 'Operational' | 'Under Maintenance' | 'Out of Service';
+  status: "Operational" | "Under Maintenance" | "Out of Service";
 };
 
 type Staff = {
@@ -67,19 +90,73 @@ const mockLabData: FullLaboratoryDetails = {
   contact_number: "+1 (555) 123-4567",
   email: "jane.smith@centrallab.com",
   equipment: [
-    { id: 1, name: "Mass Spectrometer", model: "MS2000", serialNumber: "MS2000-001", status: "Operational" },
-    { id: 2, name: "DNA Sequencer", model: "DNAS500", serialNumber: "DNAS500-002", status: "Under Maintenance" },
-    { id: 3, name: "Electron Microscope", model: "EM1000", serialNumber: "EM1000-003", status: "Operational" },
+    {
+      id: 1,
+      name: "Mass Spectrometer",
+      model: "MS2000",
+      serialNumber: "MS2000-001",
+      status: "Operational",
+    },
+    {
+      id: 2,
+      name: "DNA Sequencer",
+      model: "DNAS500",
+      serialNumber: "DNAS500-002",
+      status: "Under Maintenance",
+    },
+    {
+      id: 3,
+      name: "Electron Microscope",
+      model: "EM1000",
+      serialNumber: "EM1000-003",
+      status: "Operational",
+    },
   ],
   staff: [
-    { id: 1, name: "John Doe", role: "Lab Technician", email: "john.doe@centrallab.com" },
-    { id: 2, name: "Alice Johnson", role: "Research Scientist", email: "alice.johnson@centrallab.com" },
-    { id: 3, name: "Bob Williams", role: "Maintenance Staff", email: "bob.williams@centrallab.com" },
+    {
+      id: 1,
+      name: "John Doe",
+      role: "Lab Technician",
+      email: "john.doe@centrallab.com",
+    },
+    {
+      id: 2,
+      name: "Alice Johnson",
+      role: "Research Scientist",
+      email: "alice.johnson@centrallab.com",
+    },
+    {
+      id: 3,
+      name: "Bob Williams",
+      role: "Maintenance Staff",
+      email: "bob.williams@centrallab.com",
+    },
   ],
   maintenanceRecords: [
-    { id: 1, date: "2024-08-15", equipmentId: 2, equipmentName: "DNA Sequencer", description: "Annual calibration", performedBy: "Bob Williams" },
-    { id: 2, date: "2024-07-22", equipmentId: 1, equipmentName: "Mass Spectrometer", description: "Replace ion source", performedBy: "External Technician" },
-    { id: 3, date: "2024-06-10", equipmentId: 3, equipmentName: "Electron Microscope", description: "Software update", performedBy: "Alice Johnson" },
+    {
+      id: 1,
+      date: "2024-08-15",
+      equipmentId: 2,
+      equipmentName: "DNA Sequencer",
+      description: "Annual calibration",
+      performedBy: "Bob Williams",
+    },
+    {
+      id: 2,
+      date: "2024-07-22",
+      equipmentId: 1,
+      equipmentName: "Mass Spectrometer",
+      description: "Replace ion source",
+      performedBy: "External Technician",
+    },
+    {
+      id: 3,
+      date: "2024-06-10",
+      equipmentId: 3,
+      equipmentName: "Electron Microscope",
+      description: "Software update",
+      performedBy: "Alice Johnson",
+    },
   ],
   equipmentUsage: [
     { equipmentId: 1, name: "Mass Spectrometer", usagePercentage: 75 },
@@ -88,15 +165,23 @@ const mockLabData: FullLaboratoryDetails = {
   ],
 };
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
-const EquipmentStatusChart: React.FC<{ equipment: Equipment[] }> = ({ equipment }) => {
-  const statusCount = equipment.reduce((acc, eq) => {
-    acc[eq.status] = (acc[eq.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+const EquipmentStatusChart: React.FC<{ equipment: Equipment[] }> = ({
+  equipment,
+}) => {
+  const statusCount = equipment.reduce(
+    (acc, eq) => {
+      acc[eq.status] = (acc[eq.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
-  const data = Object.entries(statusCount).map(([name, value]) => ({ name, value }));
+  const data = Object.entries(statusCount).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -109,8 +194,7 @@ const EquipmentStatusChart: React.FC<{ equipment: Equipment[] }> = ({ equipment 
           outerRadius={80}
           fill="#8884d8"
           paddingAngle={5}
-          dataKey="value"
-        >
+          dataKey="value">
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
@@ -122,7 +206,9 @@ const EquipmentStatusChart: React.FC<{ equipment: Equipment[] }> = ({ equipment 
   );
 };
 
-const EquipmentUsageChart: React.FC<{ equipmentUsage: EquipmentUsage[] }> = ({ equipmentUsage }) => (
+const EquipmentUsageChart: React.FC<{ equipmentUsage: EquipmentUsage[] }> = ({
+  equipmentUsage,
+}) => (
   <ResponsiveContainer width="100%" height={300}>
     <BarChart data={equipmentUsage}>
       <CartesianGrid strokeDasharray="3 3" />
@@ -135,7 +221,10 @@ const EquipmentUsageChart: React.FC<{ equipmentUsage: EquipmentUsage[] }> = ({ e
   </ResponsiveContainer>
 );
 
-const DataTable: React.FC<{ data: any[], columns: string[] }> = ({ data, columns }) => (
+const DataTable: React.FC<{ data: any[]; columns: string[] }> = ({
+  data,
+  columns,
+}) => (
   <Table>
     <TableHeader>
       <TableRow>
@@ -167,7 +256,9 @@ export default function LaboratoryPage() {
     <div className="container mx-auto p-4">
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 rounded-lg shadow-lg mb-6">
         <h1 className="text-4xl font-bold mb-2">{labData.name}</h1>
-        <p className="text-xl">{labData.location_city}, {labData.location_state}</p>
+        <p className="text-xl">
+          {labData.location_city}, {labData.location_state}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -188,14 +279,18 @@ export default function LaboratoryPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
             <Microscope size={48} className="text-yellow-500 mb-2" />
-            <p className="text-xl font-semibold">{labData.equipmentUsage.length}</p>
+            <p className="text-xl font-semibold">
+              {labData.equipmentUsage.length}
+            </p>
             <p className="text-gray-500">Active Projects</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
             <ClipboardList size={48} className="text-red-500 mb-2" />
-            <p className="text-xl font-semibold">{labData.maintenanceRecords.length}</p>
+            <p className="text-xl font-semibold">
+              {labData.maintenanceRecords.length}
+            </p>
             <p className="text-gray-500">Recent Maintenances</p>
           </CardContent>
         </Card>
@@ -226,9 +321,9 @@ export default function LaboratoryPage() {
             <CardTitle>Equipment</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable 
-              data={labData.equipment} 
-              columns={['Name', 'Model', 'SerialNumber', 'Status']} 
+            <DataTable
+              data={labData.equipment}
+              columns={["Name", "Model", "SerialNumber", "Status"]}
             />
           </CardContent>
         </Card>
@@ -238,9 +333,9 @@ export default function LaboratoryPage() {
             <CardTitle>Staff</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable 
-              data={labData.staff} 
-              columns={['Name', 'Role', 'Email']} 
+            <DataTable
+              data={labData.staff}
+              columns={["Name", "Role", "Email"]}
             />
           </CardContent>
         </Card>
@@ -250,9 +345,9 @@ export default function LaboratoryPage() {
             <CardTitle>Maintenance History</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable 
-              data={labData.maintenanceRecords} 
-              columns={['Date', 'EquipmentName', 'Description', 'PerformedBy']} 
+            <DataTable
+              data={labData.maintenanceRecords}
+              columns={["Date", "EquipmentName", "Description", "PerformedBy"]}
             />
           </CardContent>
         </Card>
