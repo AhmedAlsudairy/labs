@@ -133,6 +133,9 @@ export async function createLaboratory(laboratory: CreateLaboratoryParams) {
   return data;
 }
 
+
+//labs
+//get labs
 export async function getLaboratories() {
   const { data, error } = await supabase.from('laboratory').select('*');
   if (error) throw error;
@@ -156,6 +159,8 @@ export async function getLaboratoryById(labId: number): Promise<Laboratory> {
   if (error) throw error;
   return data;
 }
+
+//labs end here
 
 export async function getUsers() {
   const { data: { users }, error } = await supabase.auth.admin.listUsers()
@@ -439,12 +444,12 @@ export async function getEquipmentById(equipmentId: number): Promise<Equipment> 
     // Helper function to get a date string or undefined
     const getDateOrUndefined = (value: any): string | undefined => 
       value instanceof Date ? value.toISOString() : getStringOrUndefined(value);
-
+console.log(data)
     // Combine equipment and device data
     const equipment: Equipment = {
       id: data.equipment_id,
       name: getStringOrUndefined(deviceData.name || data.type) || 'Unknown Equipment',
-      status: (['Operational', 'Under Maintenance', 'Out of Service'].includes(data.status) ? data.status : 'Unknown Status') as 'Operational' | 'Under Maintenance' | 'Out of Service',
+      status: (['Operational', 'Under Maintenance', 'Out of Service'].includes(deviceData.status) ? deviceData.status : 'Unknown Status') as 'Operational' | 'Under Maintenance' | 'Out of Service',
       model: getStringOrUndefined(deviceData.model) || 'Unknown Model',
       serialNumber: getStringOrUndefined(deviceData.serial_number) || 'Unknown Serial Number',
       description: getStringOrUndefined(data.description || deviceData.description) || 'No description available',

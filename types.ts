@@ -18,6 +18,7 @@ export type Laboratory = {
   manager_name: string;
   contact_number: string;
   email: string;
+  lab_category: "food"  | "animal" | "human" 
 };
 
 // Equipment

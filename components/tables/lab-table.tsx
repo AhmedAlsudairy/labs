@@ -37,6 +37,7 @@ export default function LaboratoriesTable({ laboratories, onLabUpdated }: Labora
     }
   }
 
+console.log(laboratories)
   return (
     <Card>
     <CardHeader>
@@ -47,9 +48,12 @@ export default function LaboratoriesTable({ laboratories, onLabUpdated }: Labora
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+             <TableHead>Category</TableHead>
+
             <TableHead>Location</TableHead>
             <TableHead>Manager</TableHead>
             <TableHead>Actions</TableHead>
+           
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -61,9 +65,11 @@ export default function LaboratoriesTable({ laboratories, onLabUpdated }: Labora
                     {lab.name}
                   </Link>
                 </TableCell>
+                  <TableCell>{lab.lab_category}</TableCell>
                 <TableCell>{`${lab.location_city}, ${lab.location_state}`}</TableCell>
                 <TableCell>{lab.manager_name}</TableCell>
                 <TableCell>
+                
                   <Button onClick={() => setEditingLabId(lab.lab_id)} className="mr-2">Edit</Button>
                   <Button onClick={() => handleDelete(lab.lab_id)} variant="destructive">Delete</Button>
                 </TableCell>
@@ -79,6 +85,8 @@ export default function LaboratoriesTable({ laboratories, onLabUpdated }: Labora
                       }} 
                     />
                   </TableCell>
+                  
+
                 </TableRow>
               )}
             </React.Fragment>
