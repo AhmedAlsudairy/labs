@@ -41,8 +41,18 @@ export type Equipment = {
 
 // Add a new type for creating equipment
 export type CreateEquipmentInput = Omit<Equipment, 'id'>;
+// CreateLaboratoryParams
 
+export type CreateLaboratoryParams = {
+  name: string;
+  location_state: string;
+  location_city: string;
+  manager_name: string;
+  contact_number: string;
+  email: string;
+  lab_category: "food"  | "animal" | "human" 
 
+};
 export type Staff = {
   id: number;
   name: string;
@@ -79,16 +89,6 @@ export type CreateUserParams = {
     governorate?: string;
     labId?: string;
   };
-};
-
-// CreateLaboratoryParams
-export type CreateLaboratoryParams = {
-  name: string;
-  location_state: string;
-  location_city: string;
-  manager_name: string;
-  contact_number: string;
-  email: string;
 };
 
 

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { updateLaboratory, getLaboratoryById, CreateLaboratoryParams } from "@/actions/admin"
+import { updateLaboratory, getLaboratoryById } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
+import { CreateLaboratoryParams } from "@/types"
 
 interface EditLabFormProps {
   labId: number;
@@ -19,7 +20,9 @@ export default function EditLabForm({ labId, onLabUpdated }: EditLabFormProps) {
     location_city: "",
     manager_name: "",
     contact_number: "",
-    email: ""
+    email: "",
+    lab_category: "human",
+
   })
   const [isLoading, setIsLoading] = useState(false)
 

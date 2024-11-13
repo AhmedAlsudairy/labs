@@ -1,7 +1,7 @@
 
 'use server';
 
-import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, } from '@/types';
+import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, } from '@/types';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -118,14 +118,7 @@ export async function deleteUser(userId: string) {
   return data;
 }
 
-export type CreateLaboratoryParams = {
-  name: string;
-  location_state: string;
-  location_city: string;
-  manager_name: string;
-  contact_number: string;
-  email: string;
-};
+
 
 export async function createLaboratory(laboratory: CreateLaboratoryParams) {
   const { data, error } = await supabase.from('laboratory').insert(laboratory);
@@ -232,7 +225,7 @@ export async function getStaff(labId: number): Promise<Staff[]> {
     role: 'Manager',
   }));
 }
-// actions/admin.ts
+//TODO: this will help you
 export async function addEquipment(labId: number, equipmentData: CreateEquipmentInput): Promise<Equipment> {
   // Start a Supabase transaction
   const { data: equipmentData_, error: equipmentError } = await supabase
@@ -470,6 +463,8 @@ console.log(data)
   }
 }
 
+
+//TODO::this need fixing
 export async function updateEquipment(equipmentId: number, equipmentData: Partial<Equipment>): Promise<Equipment> {
   const { data, error } = await supabase
     .from('equipment')

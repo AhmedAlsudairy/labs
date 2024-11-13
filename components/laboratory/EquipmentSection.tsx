@@ -155,6 +155,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                   ? "Update the equipment details below."
                   : "Fill in the equipment details below."}
               </p>
+              {/* TODO:here the edit form */}
               <DeviceMaintenanceForm
                 labId={labId}
                 onSubmit={handleSubmit}
