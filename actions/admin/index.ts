@@ -297,7 +297,7 @@ export async function updateMaintenanceRecord(
   // If date and frequency provided, calculate next date
   let nextDate = recordData.date;
   if (recordData.date && recordData.frequency) {
-    nextDate = calculateNextDate(recordData.date, recordData.frequency);
+    nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
   }
 
   const { data, error } = await supabase
@@ -388,7 +388,7 @@ export async function getCalibrationData(equipmentId: number): Promise<Calibrati
 export async function addMaintenanceRecord(
   recordData: Omit<MaintenanceRecord, 'id'>
 ): Promise<MaintenanceRecord> {
-  const nextDate = calculateNextDate(recordData.date, recordData.frequency);
+  const nextDate = calculateNextDate( recordData.frequency);
   
   const { data, error } = await supabase
     .from('maintenance_schedule')

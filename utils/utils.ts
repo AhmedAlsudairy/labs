@@ -31,8 +31,11 @@ export const formatDeviceAge = (receiptDate: Date, currentDate: Date) => {
   }
 };
 
-export function calculateNextDate(currentDate: string, frequency: Frequency): string {
-  const date = new Date(currentDate);
+export function calculateNextDate( frequency: Frequency,currentDate?: string | Date): string {
+  // Handle optional currentDate parameter
+  const date = currentDate 
+    ? new Date(currentDate) 
+    : new Date();
   
   switch (frequency) {
     case 'daily':
@@ -60,7 +63,7 @@ export function calculateNextDate(currentDate: string, frequency: Frequency): st
       date.setFullYear(date.getFullYear() + 1);
       break;
     default:
-      return currentDate;
+      return currentDate ? new Date(currentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
   }
   
   return date.toISOString().split('T')[0];

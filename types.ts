@@ -112,7 +112,7 @@ export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly
 
 export type MaintenanceRecord = {
   id: number;
-  date: string;
+  date?: string;
   equipmentId: number;
   description: string;
   frequency: Frequency;

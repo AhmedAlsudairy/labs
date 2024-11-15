@@ -38,6 +38,9 @@ import {
 } from "@/types";
 import { useTheme } from "next-themes";
 import { formatDeviceAge } from "@/utils/utils";
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
+import { AddMaintenanceRecordForm } from "@/components/forms/maintanance-record-form";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -67,6 +70,7 @@ export default function EquipmentPage() {
   const [calibrationData, setCalibrationData] = useState<CalibrationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   console.log("URL params:", { labId, equipmentId });
 
@@ -250,40 +254,58 @@ export default function EquipmentPage() {
           </TabsList>
 
           <TabsContent value="maintenance">
-            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="bg-gray-50 dark:bg-gray-700">
-                <CardTitle className="text-xl font-semibold dark:text-white">
-                  Maintenance Records
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="dark:border-gray-700">
-                      <TableHead className="dark:text-gray-300">Date</TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        Description
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {maintenanceRecords.map((record) => (
-                      <TableRow
-                        key={record.id}
-                        className="dark:border-gray-700"
-                      >
-                        <TableCell className="dark:text-gray-300">
-                          {new Date(record.date).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300">
-                          {record.description}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
+    <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
+      <CardTitle className="text-xl font-semibold dark:text-white">
+        Maintenance Records
+      </CardTitle>
+      <Button 
+        variant="outline"
+        onClick={() => setShowForm(!showForm)}
+      >
+        <PlusCircle className="mr-2 h-4 w-4" />
+        {showForm ? 'Close Form' : 'Add Record'}
+      </Button>
+    </CardHeader>
+    <CardContent className="p-6">
+      {showForm && (
+        <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
+          <AddMaintenanceRecordForm 
+            equipmentId={equipmentId}
+            onSuccess={() => {
+              fetchDataWithRetry();
+              setShowForm(false); // Close form after success
+            }}
+          />
+        </div>
+      )}
+      <Table>
+        <TableHeader>
+          <TableRow className="dark:border-gray-700">
+            <TableHead className="dark:text-gray-300">Date</TableHead>
+            <TableHead className="dark:text-gray-300">
+              Description
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {maintenanceRecords.map((record) => (
+            <TableRow
+              key={record.id}
+              className="dark:border-gray-700"
+            >
+              <TableCell className="dark:text-gray-300">
+                {record.date ? new Date(record.date).toLocaleDateString() : "N/A"}
+              </TableCell>
+              <TableCell className="dark:text-gray-300">
+                {record.description}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </CardContent>
+  </Card>
           </TabsContent>
 
           <TabsContent value="controls">
