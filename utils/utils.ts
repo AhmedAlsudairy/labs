@@ -1,3 +1,4 @@
+import { Frequency } from "@/types";
 import { redirect } from "next/navigation";
 
 /**
@@ -29,3 +30,38 @@ export const formatDeviceAge = (receiptDate: Date, currentDate: Date) => {
     return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
   }
 };
+
+export function calculateNextDate(currentDate: string, frequency: Frequency): string {
+  const date = new Date(currentDate);
+  
+  switch (frequency) {
+    case 'daily':
+      date.setDate(date.getDate() + 1);
+      break;
+    case 'weekly':
+      date.setDate(date.getDate() + 7);
+      break;
+    case 'biweekly':
+      date.setDate(date.getDate() + 14);
+      break;
+    case 'monthly':
+      date.setMonth(date.getMonth() + 1);
+      break;
+    case 'bimonthly':
+      date.setMonth(date.getMonth() + 2);
+      break;
+    case 'quarterly':
+      date.setMonth(date.getMonth() + 3);
+      break;
+    case 'biannual':
+      date.setMonth(date.getMonth() + 6);
+      break;
+    case 'annually':
+      date.setFullYear(date.getFullYear() + 1);
+      break;
+    default:
+      return currentDate;
+  }
+  
+  return date.toISOString().split('T')[0];
+}

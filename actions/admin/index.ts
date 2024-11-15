@@ -2,6 +2,7 @@
 'use server';
 
 import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, } from '@/types';
+import { calculateNextDate } from '@/utils/utils';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -289,23 +290,36 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
 
 
 
-export async function updateMaintenanceRecord(recordId: number, recordData: Partial<MaintenanceRecord>): Promise<MaintenanceRecord> {
+export async function updateMaintenanceRecord(
+  recordId: number, 
+  recordData: Partial<MaintenanceRecord>
+): Promise<MaintenanceRecord> {
+  // If date and frequency provided, calculate next date
+  let nextDate = recordData.date;
+  if (recordData.date && recordData.frequency) {
+    nextDate = calculateNextDate(recordData.date, recordData.frequency);
+  }
+
   const { data, error } = await supabase
     .from('maintenance_schedule')
     .update({
-      next_date: recordData.date,
+      next_date: nextDate,
       equipment_id: recordData.equipmentId,
+      frequency: recordData.frequency,
+      description: recordData.description
     })
     .eq('schedule_id', recordId)
     .select()
     .single();
 
   if (error) throw error;
+  
   return {
     id: data.schedule_id,
     date: data.next_date,
     equipmentId: data.equipment_id,
-    description: recordData.description || 'Scheduled maintenance',
+    description: data.description || 'Scheduled maintenance',
+    frequency: data.frequency
   };
 }
 
@@ -322,8 +336,6 @@ export async function deleteMaintenanceRecord(recordId: number): Promise<{ succe
 
 
 
-
-
 export async function getMaintenanceRecords(equipmentId: number): Promise<MaintenanceRecord[]> {
   const { data, error } = await supabase
     .from('maintenance_schedule')
@@ -331,13 +343,17 @@ export async function getMaintenanceRecords(equipmentId: number): Promise<Mainte
     .eq('equipment_id', equipmentId);
 
   if (error) throw error;
+  
   return data.map(record => ({
     id: record.schedule_id,
     date: record.next_date,
     equipmentId: record.equipment_id,
-    description: 'Scheduled maintenance',
+    description: record.description || 'Scheduled maintenance', // Fallback if description is null
+    frequency: record.frequency
   }));
 }
+
+
 
 export async function getExternalControls(equipmentId: number): Promise<ExternalControl[]> {
   const { data, error } = await supabase
@@ -369,23 +385,30 @@ export async function getCalibrationData(equipmentId: number): Promise<Calibrati
   }));
 }
 
-export async function addMaintenanceRecord(recordData: Omit<MaintenanceRecord, 'id'>): Promise<MaintenanceRecord> {
+export async function addMaintenanceRecord(
+  recordData: Omit<MaintenanceRecord, 'id'>
+): Promise<MaintenanceRecord> {
+  const nextDate = calculateNextDate(recordData.date, recordData.frequency);
+  
   const { data, error } = await supabase
     .from('maintenance_schedule')
     .insert({
       equipment_id: recordData.equipmentId,
-      next_date: recordData.date,
-      frequency: 'One-time', // You might want to add this as a parameter
+      next_date: nextDate,
+      frequency: recordData.frequency,
+      description: recordData.description
     })
     .select()
     .single();
 
   if (error) throw error;
+  
   return {
     id: data.schedule_id,
     date: data.next_date,
     equipmentId: data.equipment_id,
-    description: recordData.description,
+    description: data.description,
+    frequency: data.frequency
   };
 }
 

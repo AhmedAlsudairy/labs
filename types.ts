@@ -108,9 +108,12 @@ export type CalibrationData = {
 };
 
 // types.ts
+export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
+
 export type MaintenanceRecord = {
   id: number;
   date: string;
   equipmentId: number;
   description: string;
+  frequency: Frequency;
 };

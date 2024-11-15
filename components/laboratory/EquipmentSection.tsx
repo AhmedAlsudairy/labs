@@ -11,13 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import {
   Table,
   TableBody,
@@ -135,7 +129,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Equipment</CardTitle>
-            <CardDescription>Manage laboratory equipment</CardDescription>
+            <CardDescription>click to equipment name to go specific equipment</CardDescription>
           </div>
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" />
@@ -185,8 +179,9 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               <TableRow key={item.id}>
                 <TableCell>
                   <Link
-                    className="full-w"
+                    className="w-full block px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 rounded-md cursor-pointer font-medium text-primary hover:underline"
                     href={`/protected/labs/${labId}/${item.id}`}
+                    passHref
                   >
                     {item.name}
                   </Link>
@@ -221,6 +216,23 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             ))}
           </TableBody>
         </Table>
+
+{
+//1-done maintance form today
+//2-add description show manu fac note notes
+//3-then only show late or under maintanace eqs
+//4-then if maintance done set eq to oprational
+
+
+}
+
+
+
+
+
+
+
+
 
         {/* <Dialog open={showEquipmentForm} onOpenChange={setShowEquipmentForm}>
           <DialogContent className="max-w-4xl z-50">

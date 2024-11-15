@@ -38,10 +38,10 @@ const formSchema = z.object({
   receipt_date: z.date().nullable(),
   supplier: z.string().default(''),
   istherecotntrol: z.boolean().default(false),
-  frequency: z.string().min(1, { message: "Frequency is required" }),
-  next_date: z.date({
-    required_error: "Next maintenance date is required",
-  }),
+  // frequency: z.string().min(1, { message: "Frequency is required" }),
+  // next_date: z.date({
+  //   required_error: "Next maintenance date is required",
+  // }),
   status: z.enum(['Operational', 'Under Maintenance', 'Out of Service']).default('Operational'),
 });
 
@@ -73,8 +73,8 @@ export default function DeviceMaintenanceForm({
       manufacturer: initialData?.manufacturer || "",
       supplier: initialData?.supplier || "",
       istherecotntrol: false,
-      frequency: "",
-      next_date: new Date(),
+      // frequency: "",
+      // next_date: new Date(),
       manufacture_date: initialData?.manufactureDate ? new Date(initialData.manufactureDate) : null,
       receipt_date: initialData?.receiptDate ? new Date(initialData.receiptDate) : null,
       status: initialData?.status || 'Operational',
@@ -355,7 +355,7 @@ export default function DeviceMaintenanceForm({
           )}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
             name="frequency"
@@ -425,7 +425,7 @@ export default function DeviceMaintenanceForm({
               </FormItem>
             )}
           />
-        </div>
+        </div> */}
 
         <div className="flex gap-4">
           <Button type="submit" disabled={isSubmitting}>
