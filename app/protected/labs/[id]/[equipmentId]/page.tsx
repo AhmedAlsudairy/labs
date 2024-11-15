@@ -28,7 +28,7 @@ import {
   getEquipmentById,
   getMaintenanceRecords,
   getExternalControls,
-  getCalibrationData,
+  getCalibrationRecords,
 } from "@/actions/admin";
 import {
   Equipment,
@@ -41,6 +41,7 @@ import { formatDeviceAge } from "@/utils/utils";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { AddMaintenanceRecordForm } from "@/components/forms/maintanance-record-form";
+import { AddCalibrationRecordForm } from "@/components/forms/calibration-form";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -83,7 +84,7 @@ export default function EquipmentPage() {
             getEquipmentById(equipmentId),
             getMaintenanceRecords(equipmentId),
             getExternalControls(equipmentId),
-            getCalibrationData(equipmentId),
+            getCalibrationRecords(equipmentId),
           ]);
 
         console.log("Fetched equipment data:", equipmentData);
@@ -239,73 +240,84 @@ export default function EquipmentPage() {
             >
               Maintenance
             </TabsTrigger>
-            <TabsTrigger
-              value="controls"
-              className="px-6 py-2 dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
-            >
-              External Controls
-            </TabsTrigger>
+
             <TabsTrigger
               value="calibration"
               className="px-6 py-2 dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
             >
               Calibration
             </TabsTrigger>
+            <TabsTrigger
+              value="controls"
+              className="px-6 py-2 dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
+            >
+              External Controls
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="maintenance">
-          <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-    <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
-      <CardTitle className="text-xl font-semibold dark:text-white">
-        Maintenance Records
-      </CardTitle>
-      <Button 
-        variant="outline"
-        onClick={() => setShowForm(!showForm)}
-      >
-        <PlusCircle className="mr-2 h-4 w-4" />
-        {showForm ? 'Close Form' : 'Add Record'}
-      </Button>
-    </CardHeader>
-    <CardContent className="p-6">
-      {showForm && (
-        <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
-          <AddMaintenanceRecordForm 
-            equipmentId={equipmentId}
-            onSuccess={() => {
-              fetchDataWithRetry();
-              setShowForm(false); // Close form after success
-            }}
-          />
-        </div>
-      )}
-      <Table>
-        <TableHeader>
-          <TableRow className="dark:border-gray-700">
-            <TableHead className="dark:text-gray-300">Date</TableHead>
-            <TableHead className="dark:text-gray-300">
-              Description
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {maintenanceRecords.map((record) => (
-            <TableRow
-              key={record.id}
-              className="dark:border-gray-700"
-            >
-              <TableCell className="dark:text-gray-300">
-                {record.date ? new Date(record.date).toLocaleDateString() : "N/A"}
-              </TableCell>
-              <TableCell className="dark:text-gray-300">
-                {record.description}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </CardContent>
-  </Card>
+            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
+                <CardTitle className="text-xl font-semibold dark:text-white">
+                  Maintenance Records
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowForm(!showForm)}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {showForm ? "Close Form" : "Add Record"}
+                </Button>
+              </CardHeader>
+              <CardContent className="p-6">
+                {showForm && (
+                  <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
+                    <AddMaintenanceRecordForm
+                      equipmentId={equipmentId}
+                      onSuccess={() => {
+                        fetchDataWithRetry();
+                        setShowForm(false); // Close form after success
+                      }}
+                    />
+                  </div>
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="dark:border-gray-700">
+                      <TableHead className="dark:text-gray-300">Date</TableHead>
+                       <TableHead className="dark:text-gray-300">
+                        Frequency
+                      </TableHead>
+                      <TableHead className="dark:text-gray-300">
+                        Description
+                      </TableHead>
+                     
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {maintenanceRecords.map((record) => (
+                      <TableRow
+                        key={record.id}
+                        className="dark:border-gray-700"
+                      >
+                        <TableCell className="dark:text-gray-300">
+                          {record.date
+                            ? new Date(record.date).toLocaleDateString()
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell className="dark:text-gray-300">
+                          {record.frequency}
+                        </TableCell>
+                        <TableCell className="dark:text-gray-300">
+                          {record.description}
+                        </TableCell>
+                      
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="controls">
@@ -346,40 +358,66 @@ export default function EquipmentPage() {
           </TabsContent>
 
           <TabsContent value="calibration">
-            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="bg-gray-50 dark:bg-gray-700">
+          <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-semibold dark:text-white">
-                  Calibration Data
+                  Calibration Records
                 </CardTitle>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowForm(!showForm)}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {showForm ? "Close Form" : "Add Record"}
+                </Button>
               </CardHeader>
               <CardContent className="p-6">
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={calibrationData}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={theme === "dark" ? "#374151" : "#ccc"}
+                {showForm && (
+                  <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
+                    <AddCalibrationRecordForm
+                      equipmentId={equipmentId}
+                      onSuccess={() => {
+                        fetchDataWithRetry();
+                        setShowForm(false); // Close form after success
+                      }}
                     />
-                    <XAxis
-                      dataKey="date"
-                      stroke={theme === "dark" ? "#9CA3AF" : "#666"}
-                    />
-                    <YAxis stroke={theme === "dark" ? "#9CA3AF" : "#666"} />
-                    <Tooltip
-                      contentStyle={
-                        theme === "dark"
-                          ? { backgroundColor: "#1F2937", border: "none" }
-                          : undefined
-                      }
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke={theme === "dark" ? "#60A5FA" : "#8884d8"}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                  </div>
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="dark:border-gray-700">
+                      <TableHead className="dark:text-gray-300">Date</TableHead>
+                       <TableHead className="dark:text-gray-300">
+                        Frequency
+                      </TableHead>
+                      <TableHead className="dark:text-gray-300">
+                        Description
+                      </TableHead>
+                     
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {calibrationData.map((record) => (
+                      <TableRow
+                        key={record.id}
+                        className="dark:border-gray-700"
+                      >
+                        <TableCell className="dark:text-gray-300">
+                          {record.date
+                            ? new Date(record.date).toLocaleDateString()
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell className="dark:text-gray-300">
+                          {record.frequency}
+                        </TableCell>
+                        <TableCell className="dark:text-gray-300">
+                          {record.description}
+                        </TableCell>
+                      
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

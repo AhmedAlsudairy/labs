@@ -102,9 +102,10 @@ export type ExternalControl = {
 
 export type CalibrationData = {
   id: number;
-  date: string;
-  value: number;
+  date?: string;
   equipmentId: number;
+  description: string;
+  frequency: Frequency;
 };
 
 // types.ts

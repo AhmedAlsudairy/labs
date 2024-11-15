@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Frequency } from "@/types"
-import { addMaintenanceRecord } from "@/actions/admin"
+import { addCalibrationRecord } from "@/actions/admin"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -51,7 +51,7 @@ interface AddMaintenanceRecordFormProps {
   onSuccess?: () => void
 }
 
-export function AddMaintenanceRecordForm({ equipmentId, onSuccess }: AddMaintenanceRecordFormProps) {
+export function AddCalibrationRecordForm({ equipmentId, onSuccess }: AddMaintenanceRecordFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<FormValues>({
@@ -66,7 +66,7 @@ export function AddMaintenanceRecordForm({ equipmentId, onSuccess }: AddMaintena
   async function onSubmit(values: FormValues) {
     try {
       setIsSubmitting(true)
-      await addMaintenanceRecord({
+      await addCalibrationRecord({
         ...values,
         equipmentId,
       })

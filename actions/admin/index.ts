@@ -370,25 +370,56 @@ export async function getExternalControls(equipmentId: number): Promise<External
   }));
 }
 
-export async function getCalibrationData(equipmentId: number): Promise<CalibrationData[]> {
+export async function addCalibrationRecord(
+  recordData: Omit<MaintenanceRecord, 'id'>
+): Promise<MaintenanceRecord> {
+  const nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
+  
+  const { data, error } = await supabase
+    .from('calibration_schedule')
+    .insert({
+      equipment_id: recordData.equipmentId,
+      next_date: nextDate,
+      frequency: recordData.frequency,
+      description: recordData.description
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  
+  return {
+    id: data.schedule_id,
+    date: data.next_date,
+    equipmentId: data.equipment_id,
+    description: data.description,
+    frequency: data.frequency
+  };
+}
+
+export async function getCalibrationRecords(equipmentId: number): Promise<MaintenanceRecord[]> {
   const { data, error } = await supabase
     .from('calibration_schedule')
     .select('*')
     .eq('equipment_id', equipmentId);
 
   if (error) throw error;
-  return data.map(calibration => ({
-    id: calibration.schedule_id,
-    date: calibration.next_date,
-    value: Math.random() * 100, // Replace this with actual calibration value when available
-    equipmentId: calibration.equipment_id,
+  
+  return data.map(record => ({
+    id: record.schedule_id,
+    date: record.next_date,
+    equipmentId: record.equipment_id,
+    description: record.description || 'Scheduled maintenance', // Fallback if description is null
+    frequency: record.frequency
   }));
 }
+
+
 
 export async function addMaintenanceRecord(
   recordData: Omit<MaintenanceRecord, 'id'>
 ): Promise<MaintenanceRecord> {
-  const nextDate = calculateNextDate( recordData.frequency);
+  const nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
   
   const { data, error } = await supabase
     .from('maintenance_schedule')
