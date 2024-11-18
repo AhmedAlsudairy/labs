@@ -29,6 +29,7 @@ import {
   getMaintenanceRecords,
   getExternalControls,
   getCalibrationRecords,
+  deleteMaintenanceRecord,
 } from "@/actions/admin";
 import {
   Equipment,
@@ -44,6 +45,16 @@ import { EditIcon, PlusCircle } from "lucide-react";
 import { AddMaintenanceRecordForm } from "@/components/forms/maintanance-record-form";
 import { AddCalibrationRecordForm } from "@/components/forms/calibration-form";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Trash2 } from "lucide-react"; // for delete icon
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -75,6 +86,7 @@ export default function EquipmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
 
   console.log("URL params:", { labId, equipmentId });
 
@@ -100,6 +112,17 @@ export default function EquipmentPage() {
         console.error(`Error fetching data (attempt ${i + 1}):`, error);
         if (i === retries - 1) throw error;
       }
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteMaintenanceRecord(id);
+      fetchDataWithRetry(); // Refresh the list
+      setRecordToDelete(null); // Close dialog
+    } catch (error) {
+      console.error("Failed to delete record:", error);
+      // Add toast notification here if you have one
     }
   };
 
@@ -343,18 +366,67 @@ export default function EquipmentPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                setEditingId(
-                                  editingId === record.id ? null : record.id
-                                )
-                              }
-                            >
-                              <EditIcon className="h-4 w-4 mr-2" />
-                              {editingId === record.id ? "Cancel" : "Edit"}
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setEditingId(
+                                    editingId === record.id ? null : record.id
+                                  )
+                                }
+                              >
+                                <EditIcon className="h-4 w-4 mr-2" />
+                                {editingId === record.id ? "Cancel" : "Edit"}
+                              </Button>
+
+                              <Dialog
+                                open={recordToDelete === record.id}
+                                onOpenChange={(open) =>
+                                  !open && setRecordToDelete(null)
+                                }
+                              >
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                                    onClick={() => setRecordToDelete(record.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Confirm Deletion</DialogTitle>
+                                    <DialogDescription>
+                                      Are you sure you want to delete this
+                                      maintenance record? This action cannot be
+                                      undone.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() =>
+                                        setRecordToDelete(null)
+                                      }
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() =>
+                                        record.id && handleDelete(record.id)
+                                      }
+                                    >
+                                      Delete
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {editingId === record.id && (

@@ -106,6 +106,8 @@ export type CalibrationData = {
   equipmentId: number;
   description: string;
   frequency: Frequency;
+  state?:maintanace_state
+  responsible?: maintanace_role;
 };
 
 // types.ts
