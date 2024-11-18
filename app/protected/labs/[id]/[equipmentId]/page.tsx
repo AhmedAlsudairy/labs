@@ -35,13 +35,15 @@ import {
   MaintenanceRecord,
   ExternalControl,
   CalibrationData,
+  maintanace_state,
 } from "@/types";
 import { useTheme } from "next-themes";
 import { formatDeviceAge } from "@/utils/utils";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { EditIcon, PlusCircle } from "lucide-react";
 import { AddMaintenanceRecordForm } from "@/components/forms/maintanance-record-form";
 import { AddCalibrationRecordForm } from "@/components/forms/calibration-form";
+import { Badge } from "@/components/ui/badge";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -72,6 +74,7 @@ export default function EquipmentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   console.log("URL params:", { labId, equipmentId });
 
@@ -285,34 +288,92 @@ export default function EquipmentPage() {
                   <TableHeader>
                     <TableRow className="dark:border-gray-700">
                       <TableHead className="dark:text-gray-300">Date</TableHead>
-                       <TableHead className="dark:text-gray-300">
+                      <TableHead className="dark:text-gray-300">
                         Frequency
+                      </TableHead>
+                      <TableHead className="dark:text-gray-300">
+                        responsible
+                      </TableHead>
+                      <TableHead className="dark:text-gray-300">
+                        State
                       </TableHead>
                       <TableHead className="dark:text-gray-300">
                         Description
                       </TableHead>
-                     
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {maintenanceRecords.map((record) => (
-                      <TableRow
-                        key={record.id}
-                        className="dark:border-gray-700"
-                      >
-                        <TableCell className="dark:text-gray-300">
-                          {record.date
-                            ? new Date(record.date).toLocaleDateString()
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300">
-                          {record.frequency}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300">
-                          {record.description}
-                        </TableCell>
-                      
-                      </TableRow>
+                      <React.Fragment key={record.id}>
+                        <TableRow className="dark:border-gray-700">
+                          <TableCell className="dark:text-gray-300">
+                            {record.date
+                              ? new Date(record.date).toLocaleDateString()
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell className="dark:text-gray-300">
+                            {record.frequency}
+                          </TableCell>
+                          <TableCell className="dark:text-gray-300">
+                            {record.responsible}
+                          </TableCell>
+                          <TableCell className="dark:text-gray-300">
+                            {record.state && (
+                              <StateIndicator state={record.state} />
+                            )}
+                          </TableCell>
+                          <TableCell className="dark:text-gray-300 px-4 py-2">
+                            <div className="relative">
+                              {record.description && (
+                                <details className="cursor-pointer">
+                                  <summary className="text-sm font-medium hover:text-blue-600">
+                                    {record.description.slice(0, 50)}
+                                    {record.description.length > 50 && "..."}
+                                  </summary>
+                                  <div className="mt-2 whitespace-pre-wrap">
+                                    {record.description}
+                                  </div>
+                                </details>
+                              )}
+                              {!record.description && (
+                                <div className="text-center text-gray-500">
+                                  -
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setEditingId(
+                                  editingId === record.id ? null : record.id
+                                )
+                              }
+                            >
+                              <EditIcon className="h-4 w-4 mr-2" />
+                              {editingId === record.id ? "Cancel" : "Edit"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {editingId === record.id && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={6}
+                              className="p-4 bg-gray-50 dark:bg-gray-800"
+                            >
+                              <AddMaintenanceRecordForm
+                                equipmentId={equipmentId}
+                                initialData={record}
+                                onSuccess={() => {
+                                  setEditingId(null);
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -358,7 +419,7 @@ export default function EquipmentPage() {
           </TabsContent>
 
           <TabsContent value="calibration">
-          <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
+            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
               <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-semibold dark:text-white">
                   Calibration Records
@@ -387,13 +448,12 @@ export default function EquipmentPage() {
                   <TableHeader>
                     <TableRow className="dark:border-gray-700">
                       <TableHead className="dark:text-gray-300">Date</TableHead>
-                       <TableHead className="dark:text-gray-300">
+                      <TableHead className="dark:text-gray-300">
                         Frequency
                       </TableHead>
                       <TableHead className="dark:text-gray-300">
                         Description
                       </TableHead>
-                     
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -413,7 +473,6 @@ export default function EquipmentPage() {
                         <TableCell className="dark:text-gray-300">
                           {record.description}
                         </TableCell>
-                      
                       </TableRow>
                     ))}
                   </TableBody>
@@ -433,3 +492,16 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
     <span className="dark:text-gray-400">{value}</span>
   </div>
 );
+
+const StateIndicator = ({ state }: { state: maintanace_state }) => {
+  const variants: Record<
+    maintanace_state,
+    "success" | "warning" | "destructive"
+  > = {
+    done: "success",
+    "need maintance": "warning",
+    "late maintance": "destructive",
+  };
+
+  return <Badge variant={variants[state]}>{state}</Badge>;
+};

@@ -306,18 +306,23 @@ export async function updateMaintenanceRecord(
       next_date: nextDate,
       equipment_id: recordData.equipmentId,
       frequency: recordData.frequency,
-      description: recordData.description
+      description: recordData.description,
+      state: recordData.state,
+      responsible: recordData.responsible,
     })
     .eq('schedule_id', recordId)
     .select()
     .single();
 
   if (error) throw error;
-  
+  console.log(data)
+  console.log(error)
   return {
     id: data.schedule_id,
     date: data.next_date,
     equipmentId: data.equipment_id,
+    state: data.state,
+ responsible: data.responsible,
     description: data.description || 'Scheduled maintenance',
     frequency: data.frequency
   };
@@ -348,6 +353,8 @@ export async function getMaintenanceRecords(equipmentId: number): Promise<Mainte
     id: record.schedule_id,
     date: record.next_date,
     equipmentId: record.equipment_id,
+    state: record.state,
+    responsible: record.responsible,
     description: record.description || 'Scheduled maintenance', // Fallback if description is null
     frequency: record.frequency
   }));
@@ -393,6 +400,8 @@ export async function addCalibrationRecord(
     date: data.next_date,
     equipmentId: data.equipment_id,
     description: data.description,
+    state: data.state,
+responsible: data.responsible,
     frequency: data.frequency
   };
 }
@@ -409,6 +418,8 @@ export async function getCalibrationRecords(equipmentId: number): Promise<Mainte
     id: record.schedule_id,
     date: record.next_date,
     equipmentId: record.equipment_id,
+    state: record.state,
+responsible: record.responsible,
     description: record.description || 'Scheduled maintenance', // Fallback if description is null
     frequency: record.frequency
   }));
@@ -427,7 +438,9 @@ export async function addMaintenanceRecord(
       equipment_id: recordData.equipmentId,
       next_date: nextDate,
       frequency: recordData.frequency,
-      description: recordData.description
+      description: recordData.description,
+      responsible: recordData.responsible,
+
     })
     .select()
     .single();
@@ -439,6 +452,9 @@ export async function addMaintenanceRecord(
     date: data.next_date,
     equipmentId: data.equipment_id,
     description: data.description,
+    responsible: data.responsible,
+    state: data.state,
+
     frequency: data.frequency
   };
 }

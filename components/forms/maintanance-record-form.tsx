@@ -1,10 +1,10 @@
 // components/AddMaintenanceRecordForm.tsx
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Frequency } from "@/types"
-import { addMaintenanceRecord } from "@/actions/admin"
+import { Frequency, maintanace_role, maintanace_state } from "@/types"
+import { addMaintenanceRecord, updateMaintenanceRecord } from "@/actions/admin"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,52 +38,105 @@ const frequencies: Frequency[] = [
   'annually'
 ]
 
+const responsibleOptions = [
+  'lab in charge',
+  'biomedical', 
+  'company engineer',
+  'lab technician'
+] as const;
+
 const formSchema = z.object({
   date: z.string().optional(),
   description: z.string().min(1, "Description is required"),
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'biannual', 'annually']),
+  responsible: z.enum(['lab in charge', 'biomedical', 'company engineer', 'lab technician']),
 })
 
 type FormValues = z.infer<typeof formSchema>
 
-interface AddMaintenanceRecordFormProps {
-  equipmentId: number
-  onSuccess?: () => void
+// Add interface for initial data
+interface MaintenanceRecordData {
+  id?: number; // Add id field
+  date?: string;
+  description?: string;
+  frequency?: Frequency;
+  responsible?: maintanace_role;
+  state?: maintanace_state;
 }
 
-export function AddMaintenanceRecordForm({ equipmentId, onSuccess }: AddMaintenanceRecordFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+interface AddMaintenanceRecordFormProps {
+  equipmentId: number;
+  initialData?: MaintenanceRecordData; // Should include id if editing
+  onSuccess?: () => void;
+}
+
+export function AddMaintenanceRecordForm({ 
+  equipmentId, 
+  initialData, 
+  onSuccess 
+}: AddMaintenanceRecordFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditMode = !!initialData;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
-      description: "",
-      frequency: "monthly",
+      date: initialData?.date || new Date().toISOString().split('T')[0],
+      description: initialData?.description || "",
+      frequency: initialData?.frequency || "monthly",
+      responsible: initialData?.responsible || "biomedical",
     },
-  })
+  });
+
+  // Add form state watch
+  const watchedValues = form.watch();
+  console.log('Form values:', watchedValues);
+
+  // Add effect to monitor form changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => 
+      console.log('Form updated:', { name, type, value })
+    );
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   async function onSubmit(values: FormValues) {
     try {
-      setIsSubmitting(true)
-      await addMaintenanceRecord({
-        ...values,
-        equipmentId,
-      })
-      toast({
-        title: "Success",
-        description: "Maintenance record added successfully",
-      })
-      form.reset()
-      onSuccess?.()
+      setIsSubmitting(true);
+      if (isEditMode) {
+        if (!initialData?.id) {
+          throw new Error("Record ID is required for updates");
+        }
+        await updateMaintenanceRecord(
+          initialData.id, // Add the record ID as first argument
+          {
+            ...values,
+            equipmentId,
+          }
+        );
+        toast({
+          title: "Success",
+          description: "Maintenance record updated successfully",
+        });
+      } else {
+        await addMaintenanceRecord({
+          ...values,
+          equipmentId,
+        });
+        toast({
+          title: "Success",
+          description: "Maintenance record added successfully",
+        });
+      }
+      onSuccess?.();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add maintenance record",
+        description: `Failed to ${isEditMode ? 'update' : 'add'} maintenance record`,
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -128,6 +181,42 @@ export function AddMaintenanceRecordForm({ equipmentId, onSuccess }: AddMaintena
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        <FormField
+          control={form.control}
+          name="responsible"
+          render={({ field }) => {
+            console.log('Responsible field value:', field.value); // Debug current value
+            return (
+              <FormItem>
+                <FormLabel>Responsible</FormLabel>
+                <Select 
+                  onValueChange={(value) => {
+                    console.log('New responsible value:', value); // Debug new value
+                    field.onChange(value);
+                  }} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select responsible person" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {responsibleOptions.map((responsible) => (
+                      <SelectItem key={responsible} value={responsible}>
+                        {responsible.split(' ').map(word => 
+                          word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
 
         <FormField

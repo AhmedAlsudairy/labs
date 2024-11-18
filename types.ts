@@ -110,11 +110,18 @@ export type CalibrationData = {
 
 // types.ts
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
+export type maintanace_state= 'done' | 'need maintance' | 'late maintance';
+
+
+
+export type maintanace_role= 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';
 
 export type MaintenanceRecord = {
   id: number;
   date?: string;
   equipmentId: number;
   description: string;
+  state?:maintanace_state
+  responsible?: maintanace_role;
   frequency: Frequency;
 };
