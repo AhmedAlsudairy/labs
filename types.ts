@@ -127,3 +127,41 @@ export type MaintenanceRecord = {
   responsible?: maintanace_role;
   frequency: Frequency;
 };
+
+
+
+
+// Base interface for common fields
+interface BaseEquipmentHistory {
+  history_id?: number;
+  performed_date: Date;
+  completed_date: Date;
+  state?: maintanace_state;
+  description: string;
+  technician_notes: string;
+}
+
+// Maintenance specific interface
+export interface MaintenanceEquipmentHistory extends BaseEquipmentHistory {
+  schedule_id: number;
+  work_performed: string;
+  parts_used: string;
+  next_maintenance_date: Date;
+  calibration_schedule_id?: never;
+  calibration_results?: never;
+  next_calibration_date?: never;
+}
+
+// Calibration specific interface
+export interface CalibrationEquipmentHistory extends BaseEquipmentHistory {
+  calibration_schedule_id: number;
+  calibration_results: string;
+  next_calibration_date: Date;
+  schedule_id?: never;
+  work_performed?: never;
+  parts_used?: never;
+  next_maintenance_date?: never;
+}
+
+// Union type for both types of histories
+export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmentHistory;

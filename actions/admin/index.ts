@@ -1,7 +1,6 @@
-
 'use server';
 
-import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, } from '@/types';
+import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, EquipmentHistory } from '@/types';
 import { calculateNextDate } from '@/utils/utils';
 import { createClient } from '@supabase/supabase-js';
 
@@ -625,4 +624,93 @@ export async function deleteEquipment(equipmentId: number): Promise<{ success: b
     console.error('Error deleting equipment:', error);
     throw new Error(`Failed to delete equipment: ${(error as Error).message}`);
   }
+}
+
+
+
+// Add history for maintenance schedule
+export async function addMaintenanceHistory(data: Omit<EquipmentHistory, 'history_id' | 'calibration_schedule_id'>) {
+  const { data: result, error } = await supabase
+    .from('equipment_history')
+    .insert([{ ...data }])
+    .select()
+    .single();
+
+  if (error) return { error };
+  return { data: result };
+}
+
+// Add history for calibration schedule
+export async function addCalibrationHistory(data: Omit<EquipmentHistory, 'history_id' | 'schedule_id'>) {
+  const { data: result, error } = await supabase
+    .from('equipment_history')
+    .insert([{ ...data }])
+    .select()
+    .single();
+
+  if (error) return { error };
+  return { data: result };
+}
+
+// Get history by maintenance schedule
+export async function getHistoryByScheduleId(scheduleId: number) {
+  const { data, error } = await supabase
+    .from('equipment_history')
+    .select('*')
+    .eq('schedule_id', scheduleId)
+    .order('performed_date', { ascending: false });
+
+  if (error) return { error };
+  return { data };
+}
+
+// Get history by calibration schedule
+export async function getHistoryByCalibrationScheduleId(calibrationScheduleId: number) {
+  const { data, error } = await supabase
+    .from('equipment_history')
+    .select('*')
+    .eq('calibration_schedule_id', calibrationScheduleId)
+    .order('performed_date', { ascending: false });
+
+  if (error) return { error };
+  return { data };
+}
+
+// Update history record
+export async function updateHistory(
+  historyId: number, 
+  updates: Partial<Omit<EquipmentHistory, 'history_id'>>
+) {
+  const { data, error } = await supabase
+    .from('equipment_history')
+    .update(updates)
+    .eq('history_id', historyId)
+    .select()
+    .single();
+
+  if (error) return { error };
+  return { data };
+}
+
+// Delete history record
+export async function deleteHistory(historyId: number) {
+  const { error } = await supabase
+    .from('equipment_history')
+    .delete()
+    .eq('history_id', historyId);
+
+  if (error) return { error };
+  return { success: true };
+}
+
+// Get single history record
+export async function getHistoryById(historyId: number) {
+  const { data, error } = await supabase
+    .from('equipment_history')
+    .select('*')
+    .eq('history_id', historyId)
+    .single();
+
+  if (error) return { error };
+  return { data };
 }

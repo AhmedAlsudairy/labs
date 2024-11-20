@@ -10,7 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { FormControl  } from "@/components/ui/form"
+import { FormControl } from "@/components/ui/form"
 
 interface DatePickerProps {
   date?: Date
@@ -34,18 +34,14 @@ export function DatePicker({ date, onSelect }: DatePickerProps) {
           </Button>
         </FormControl>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" >
+      <PopoverContent className="w-auto p-0">
         <Calendar
           mode="single"
           selected={date}
           onSelect={onSelect}
-          disabled={(date) =>
-            date > new Date() || date < new Date("1900-01-01")
-          }
           initialFocus
         />
       </PopoverContent>
     </Popover>
   )
 }
-

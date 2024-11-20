@@ -55,6 +55,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Trash2 } from "lucide-react"; // for delete icon
+import { MaintenanceRecords } from "@/components/tables/maintanance-record-table";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -282,175 +283,14 @@ export default function EquipmentPage() {
           </TabsList>
 
           <TabsContent value="maintenance">
-            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-semibold dark:text-white">
-                  Maintenance Records
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowForm(!showForm)}
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  {showForm ? "Close Form" : "Add Record"}
-                </Button>
-              </CardHeader>
-              <CardContent className="p-6">
-                {showForm && (
-                  <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
-                    <AddMaintenanceRecordForm
-                      equipmentId={equipmentId}
-                      onSuccess={() => {
-                        fetchDataWithRetry();
-                        setShowForm(false); // Close form after success
-                      }}
-                    />
-                  </div>
-                )}
-                <Table>
-                  <TableHeader>
-                    <TableRow className="dark:border-gray-700">
-                      <TableHead className="dark:text-gray-300">Date</TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        Frequency
-                      </TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        responsible
-                      </TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        State
-                      </TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        Description
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {maintenanceRecords.map((record) => (
-                      <React.Fragment key={record.id}>
-                        <TableRow className="dark:border-gray-700">
-                          <TableCell className="dark:text-gray-300">
-                            {record.date
-                              ? new Date(record.date).toLocaleDateString()
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell className="dark:text-gray-300">
-                            {record.frequency}
-                          </TableCell>
-                          <TableCell className="dark:text-gray-300">
-                            {record.responsible}
-                          </TableCell>
-                          <TableCell className="dark:text-gray-300">
-                            {record.state && (
-                              <StateIndicator state={record.state} />
-                            )}
-                          </TableCell>
-                          <TableCell className="dark:text-gray-300 px-4 py-2">
-                            <div className="relative">
-                              {record.description && (
-                                <details className="cursor-pointer">
-                                  <summary className="text-sm font-medium hover:text-blue-600">
-                                    {record.description.slice(0, 50)}
-                                    {record.description.length > 50 && "..."}
-                                  </summary>
-                                  <div className="mt-2 whitespace-pre-wrap">
-                                    {record.description}
-                                  </div>
-                                </details>
-                              )}
-                              {!record.description && (
-                                <div className="text-center text-gray-500">
-                                  -
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  setEditingId(
-                                    editingId === record.id ? null : record.id
-                                  )
-                                }
-                              >
-                                <EditIcon className="h-4 w-4 mr-2" />
-                                {editingId === record.id ? "Cancel" : "Edit"}
-                              </Button>
+          <MaintenanceRecords
+            mode="maintenance"
 
-                              <Dialog
-                                open={recordToDelete === record.id}
-                                onOpenChange={(open) =>
-                                  !open && setRecordToDelete(null)
-                                }
-                              >
-                                <DialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-100"
-                                    onClick={() => setRecordToDelete(record.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Confirm Deletion</DialogTitle>
-                                    <DialogDescription>
-                                      Are you sure you want to delete this
-                                      maintenance record? This action cannot be
-                                      undone.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <DialogFooter>
-                                    <Button
-                                      variant="outline"
-                                      onClick={() =>
-                                        setRecordToDelete(null)
-                                      }
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() =>
-                                        record.id && handleDelete(record.id)
-                                      }
-                                    >
-                                      Delete
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        {editingId === record.id && (
-                          <TableRow>
-                            <TableCell
-                              colSpan={6}
-                              className="p-4 bg-gray-50 dark:bg-gray-800"
-                            >
-                              <AddMaintenanceRecordForm
-                                equipmentId={equipmentId}
-                                initialData={record}
-                                onSuccess={() => {
-                                  setEditingId(null);
-                                }}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+              records={maintenanceRecords}
+              equipmentId={equipmentId}
+              onDelete={handleDelete}
+              onSuccess={fetchDataWithRetry}
+            />
           </TabsContent>
 
           <TabsContent value="controls">
