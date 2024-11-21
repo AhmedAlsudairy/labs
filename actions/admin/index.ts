@@ -338,7 +338,37 @@ export async function deleteMaintenanceRecord(recordId: number): Promise<{ succe
 }
 
 
+export async function addMaintenanceRecord(
+  recordData: Omit<MaintenanceRecord, 'id'>
+): Promise<MaintenanceRecord> {
+  const nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
+  
+  const { data, error } = await supabase
+    .from('maintenance_schedule')
+    .insert({
+      equipment_id: recordData.equipmentId,
+      next_date: nextDate,
+      frequency: recordData.frequency,
+      description: recordData.description,
+      responsible: recordData.responsible,
 
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  
+  return {
+    id: data.schedule_id,
+    date: data.next_date,
+    equipmentId: data.equipment_id,
+    description: data.description,
+    responsible: data.responsible,
+    state: data.state,
+
+    frequency: data.frequency
+  };
+}
 
 export async function getMaintenanceRecords(equipmentId: number): Promise<MaintenanceRecord[]> {
   const { data, error } = await supabase
@@ -387,7 +417,10 @@ export async function addCalibrationRecord(
       equipment_id: recordData.equipmentId,
       next_date: nextDate,
       frequency: recordData.frequency,
-      description: recordData.description
+      description: recordData.description,
+      state: recordData.state,
+      responsible: recordData.responsible,
+
     })
     .select()
     .single();
@@ -412,9 +445,9 @@ export async function getCalibrationRecords(equipmentId: number): Promise<Mainte
     .eq('equipment_id', equipmentId);
 
   if (error) throw error;
-  
+  console.log(data)
   return data.map(record => ({
-    id: record.schedule_id,
+    id: record.calibration_schedule_id,
     date: record.next_date,
     equipmentId: record.equipment_id,
     state: record.state,
@@ -424,38 +457,54 @@ responsible: record.responsible,
   }));
 }
 
-
-
-export async function addMaintenanceRecord(
-  recordData: Omit<MaintenanceRecord, 'id'>
+// Update calibration record
+export async function updateCalibrationRecord(
+  recordId: number, 
+  recordData: Partial<MaintenanceRecord>
 ): Promise<MaintenanceRecord> {
-  const nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
-  
+  // If date and frequency provided, calculate next date
+  let nextDate = recordData.date;
+  if (recordData.date && recordData.frequency) {
+    nextDate = calculateNextDate(recordData.frequency, recordData.date ?? new Date());
+  }
+
   const { data, error } = await supabase
-    .from('maintenance_schedule')
-    .insert({
-      equipment_id: recordData.equipmentId,
+    .from('calibration_schedule')
+    .update({
       next_date: nextDate,
+      equipment_id: recordData.equipmentId,
       frequency: recordData.frequency,
       description: recordData.description,
+      state: recordData.state,
       responsible: recordData.responsible,
-
     })
+    .eq('schedule_id', recordId)
     .select()
     .single();
 
   if (error) throw error;
-  
+
   return {
-    id: data.schedule_id,
+    id: data.calibration_schedule_id,
     date: data.next_date,
     equipmentId: data.equipment_id,
-    description: data.description,
-    responsible: data.responsible,
     state: data.state,
-
+    responsible: data.responsible,
+    description: data.description || 'Scheduled calibration',
     frequency: data.frequency
   };
+}
+// Delete calibration record
+
+
+export async function deleteCalibrationRecord(recordId: number): Promise<{ success: boolean }> {
+  const { error } = await supabase
+    .from('calibration_schedule')
+    .delete()
+    .eq('calibration_schedule_id', recordId);
+console.log(error)
+  if (error) throw error;
+  return { success: true };
 }
 
 

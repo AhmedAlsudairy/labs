@@ -14,6 +14,7 @@ import {
 } from "../ui/table";
 import { MaintenanceRecordRow } from "./maintenance-record-row";
 import { DeleteConfirmationDialog } from "../ui/delete-confirmation-dialog";
+import { RecordForm } from "../forms/record-form";
 
 interface MaintenanceRecordsProps {
   mode: "maintenance" | "calibration";
@@ -43,7 +44,9 @@ export function MaintenanceRecords({
     <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
       <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
         <CardTitle className="text-xl font-semibold dark:text-white">
-          Maintenance Records
+          {mode === "maintenance"
+            ? "Maintenance Records"
+            : "Calibration Records"}
         </CardTitle>
         <Button variant="outline" onClick={() => setShowForm(!showForm)}>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -53,7 +56,8 @@ export function MaintenanceRecords({
       <CardContent className="p-6">
         {showForm && (
           <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
-            <AddMaintenanceRecordForm
+            <RecordForm
+            mode={mode}
               equipmentId={equipmentId}
               onSuccess={() => {
                 onSuccess();
@@ -89,7 +93,8 @@ export function MaintenanceRecords({
                       colSpan={6}
                       className="p-4 bg-gray-50 dark:bg-gray-800"
                     >
-                      <AddMaintenanceRecordForm
+                      <RecordForm
+                        mode={mode}
                         equipmentId={equipmentId}
                         initialData={record}
                         onSuccess={() => {

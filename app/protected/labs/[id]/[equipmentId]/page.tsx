@@ -3,14 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ErrorBoundary } from "react-error-boundary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   BarChart,
   Bar,
@@ -20,8 +13,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
+  
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -30,6 +22,7 @@ import {
   getExternalControls,
   getCalibrationRecords,
   deleteMaintenanceRecord,
+  deleteCalibrationRecord,
 } from "@/actions/admin";
 import {
   Equipment,
@@ -40,21 +33,9 @@ import {
 } from "@/types";
 import { useTheme } from "next-themes";
 import { formatDeviceAge } from "@/utils/utils";
-import { Button } from "@/components/ui/button";
-import { EditIcon, PlusCircle } from "lucide-react";
-import { AddMaintenanceRecordForm } from "@/components/forms/maintanance-record-form";
-import { AddCalibrationRecordForm } from "@/components/forms/calibration-form";
+
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Trash2 } from "lucide-react"; // for delete icon
+
 import { MaintenanceRecords } from "@/components/tables/maintanance-record-table";
 
 function ErrorFallback({ error }: { error: Error }) {
@@ -85,8 +66,6 @@ export default function EquipmentPage() {
   const [calibrationData, setCalibrationData] = useState<CalibrationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
 
   console.log("URL params:", { labId, equipmentId });
@@ -116,14 +95,16 @@ export default function EquipmentPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, mode: 'maintenance' | 'calibration') => {
     try {
-      await deleteMaintenanceRecord(id);
-      fetchDataWithRetry(); // Refresh the list
-      setRecordToDelete(null); // Close dialog
+      if (mode === 'maintenance') {
+        await deleteMaintenanceRecord(id);
+      } else {
+        await deleteCalibrationRecord(id);
+      }
+      fetchDataWithRetry();
     } catch (error) {
-      console.error("Failed to delete record:", error);
-      // Add toast notification here if you have one
+      console.error(`Failed to delete ${mode} record:`, error);
     }
   };
 
@@ -283,12 +264,11 @@ export default function EquipmentPage() {
           </TabsList>
 
           <TabsContent value="maintenance">
-          <MaintenanceRecords
-            mode="maintenance"
-
+            <MaintenanceRecords
+              mode="maintenance"
               records={maintenanceRecords}
               equipmentId={equipmentId}
-              onDelete={handleDelete}
+              onDelete={(id) => handleDelete(id, 'maintenance')}
               onSuccess={fetchDataWithRetry}
             />
           </TabsContent>
@@ -331,66 +311,13 @@ export default function EquipmentPage() {
           </TabsContent>
 
           <TabsContent value="calibration">
-            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="bg-gray-50 dark:bg-gray-700 flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-semibold dark:text-white">
-                  Calibration Records
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowForm(!showForm)}
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  {showForm ? "Close Form" : "Add Record"}
-                </Button>
-              </CardHeader>
-              <CardContent className="p-6">
-                {showForm && (
-                  <div className="mb-6 p-4 border rounded-lg dark:border-gray-700">
-                    <AddCalibrationRecordForm
-                      equipmentId={equipmentId}
-                      onSuccess={() => {
-                        fetchDataWithRetry();
-                        setShowForm(false); // Close form after success
-                      }}
-                    />
-                  </div>
-                )}
-                <Table>
-                  <TableHeader>
-                    <TableRow className="dark:border-gray-700">
-                      <TableHead className="dark:text-gray-300">Date</TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        Frequency
-                      </TableHead>
-                      <TableHead className="dark:text-gray-300">
-                        Description
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {calibrationData.map((record) => (
-                      <TableRow
-                        key={record.id}
-                        className="dark:border-gray-700"
-                      >
-                        <TableCell className="dark:text-gray-300">
-                          {record.date
-                            ? new Date(record.date).toLocaleDateString()
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300">
-                          {record.frequency}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300">
-                          {record.description}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <MaintenanceRecords
+              mode="calibration"
+              records={calibrationData}
+              equipmentId={equipmentId}
+              onDelete={(id) => handleDelete(id, 'calibration')}
+              onSuccess={fetchDataWithRetry}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -413,6 +340,9 @@ const StateIndicator = ({ state }: { state: maintanace_state }) => {
     done: "success",
     "need maintance": "warning",
     "late maintance": "destructive",
+    calibrated: "success",
+    "need calibration": "warning",
+    "late calibration": "destructive",
   };
 
   return <Badge variant={variants[state]}>{state}</Badge>;

@@ -112,7 +112,7 @@ export type CalibrationData = {
 
 // types.ts
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
-export type maintanace_state= 'done' | 'need maintance' | 'late maintance';
+export type maintanace_state= 'done' | 'need maintance' | 'late maintance'|'calibrated'|'need calibration'|'late calibration';
 
 
 

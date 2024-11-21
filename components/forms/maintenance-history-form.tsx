@@ -32,23 +32,28 @@ interface MaintenanceHistoryFormProps {
   onSuccess: () => void;
 }
 
-const baseSchema = {
+const maintainanceStates = ["done", "need maintance", "late maintance"] as const;
+const calibrationStates = ["calibrated", "need calibration", "late calibration"] as const;
+
+const baseSchema = (mode: 'maintenance' | 'calibration') => ({
   performed_date: z.date(),
   completed_date: z.date(),
-  state: z.enum(["done", "need maintance", "late maintance"]),
+  state: mode === 'maintenance' 
+    ? z.enum(maintainanceStates)
+    : z.enum(calibrationStates),
   description: z.string().min(1, "Description is required"),
   technician_notes: z.string(),
-};
+});
 
 const maintenanceSchema = z.object({
-  ...baseSchema,
+  ...baseSchema('maintenance'),
   work_performed: z.string().min(1, "Work performed is required"),
   parts_used: z.string(),
   next_maintenance_date: z.date(),
 });
 
 const calibrationSchema = z.object({
-  ...baseSchema,
+  ...baseSchema('calibration'),
   calibration_results: z.string().min(1, "Calibration results are required"),
   next_calibration_date: z.date(),
 });
@@ -57,7 +62,7 @@ const calibrationSchema = z.object({
 type BaseHistory = {
   performed_date: Date;
   completed_date: Date;
-  state: "done" | "need maintance" | "late maintance";
+  state: "done" | "need maintance" | "late maintance" | "calibrated" | "need calibration" | "late calibration";
   description: string;
   technician_notes: string;
 };
@@ -82,14 +87,18 @@ export function MaintenanceHistoryForm({
   onSuccess 
 }: MaintenanceHistoryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const formSchema = mode === 'maintenance' ? maintenanceSchema : calibrationSchema;
+  const formSchema = mode === 'maintenance' 
+    ? maintenanceSchema 
+    : calibrationSchema.extend({
+        state: z.enum(calibrationStates)
+      });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: "",
       technician_notes: "",
-      state: "done",
+      state: mode === 'maintenance' ? "done" : "calibrated",
       ...(mode === 'maintenance' ? {
         work_performed: "",
         parts_used: "",
@@ -187,9 +196,19 @@ export function MaintenanceHistoryForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="done">Done</SelectItem>
-                  <SelectItem value="need maintance">Need Maintenance</SelectItem>
-                  <SelectItem value="late maintance">Late Maintenance</SelectItem>
+                  {mode === 'maintenance' ? (
+                    <>
+                      <SelectItem value="done">Done</SelectItem>
+                      <SelectItem value="need maintance">Need Maintenance</SelectItem>
+                      <SelectItem value="late maintance">Late Maintenance</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="calibrated">Calibrated</SelectItem>
+                      <SelectItem value="need calibration">Need Calibration</SelectItem>
+                      <SelectItem value="late calibration">Late Calibration</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
