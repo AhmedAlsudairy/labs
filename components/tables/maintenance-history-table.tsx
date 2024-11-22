@@ -8,14 +8,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 // Types
 
 interface MaintenanceHistoryTableProps {
+  equipment_id: number;
   mode: 'maintenance' | 'calibration';
   scheduleId: number;
   frequency: Frequency;
+  lab_id: number;
   onRefresh: () => void;
 }
 
 // MaintenanceHistoryTable Component
-export function MaintenanceHistoryTable({ mode, scheduleId, frequency, onRefresh }: MaintenanceHistoryTableProps) {
+export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, frequency, onRefresh }: MaintenanceHistoryTableProps) {
   const [histories, setHistories] = useState<EquipmentHistory[]>([]);
   const [showForm, setShowForm] = useState(false);
 
@@ -29,19 +31,19 @@ export function MaintenanceHistoryTable({ mode, scheduleId, frequency, onRefresh
     fetchHistories();
   }, [mode, scheduleId]);
 
-  const handleSubmit = async (formData: Omit<EquipmentHistory, 'history_id'>) => {
-    const addHistory = mode === 'calibration' 
-      ? addCalibrationHistory 
-      : addMaintenanceHistory;
+  // const handleSubmit = async (formData: Omit<EquipmentHistory, 'history_id'>) => {
+  //   const addHistory = mode === 'calibration' 
+  //     ? addCalibrationHistory 
+  //     : addMaintenanceHistory;
 
-    await addHistory({
-      ...formData,
-      [mode === 'calibration' ? 'calibration_schedule_id' : 'schedule_id']: scheduleId
-    });
+  //   await addHistory({
+  //     ...formData,
+  //     [mode === 'calibration' ? 'calibration_schedule_id' : 'schedule_id']: scheduleId
+  //   });
     
-    setShowForm(false);
-    onRefresh();
-  };
+  //   setShowForm(false);
+  //   onRefresh();
+  // };
 
   const isCalibrationHistory = (history: EquipmentHistory): history is CalibrationEquipmentHistory => {
     return 'calibration_results' in history;
@@ -64,6 +66,8 @@ export function MaintenanceHistoryTable({ mode, scheduleId, frequency, onRefresh
 
       {showForm && (
         <MaintenanceHistoryForm
+        equipment_id={equipment_id}
+        lab_id={lab_id}
           mode={mode}
           scheduleId={scheduleId}
           frequency={frequency}

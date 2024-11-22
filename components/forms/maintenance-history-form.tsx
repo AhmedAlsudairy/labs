@@ -26,6 +26,8 @@ import { calculateNextDate } from "@/utils/utils";
 import { Frequency } from "@/types";
 
 interface MaintenanceHistoryFormProps {
+  equipment_id: number;
+  lab_id: number;
   mode: 'maintenance' | 'calibration';
   scheduleId: number;
   frequency: Frequency;
@@ -81,6 +83,8 @@ type CalibrationData = BaseHistory & {
 };
 
 export function MaintenanceHistoryForm({ 
+  equipment_id,
+  lab_id,
   mode,
   scheduleId, 
   frequency,
@@ -130,7 +134,7 @@ export function MaintenanceHistoryForm({
           work_performed: (values as MaintenanceData).work_performed || '',
           parts_used: (values as MaintenanceData).parts_used || '',
         };
-        await addMaintenanceHistory(maintenanceData);
+        await addMaintenanceHistory(maintenanceData,lab_id,equipment_id);
       } else {
         const calibrationData: CalibrationData = {
           ...values,
@@ -138,7 +142,7 @@ export function MaintenanceHistoryForm({
           next_calibration_date: new Date(nextDate),
           calibration_results: (values as CalibrationData).calibration_results || '',
         };
-        await addCalibrationHistory(calibrationData);
+        await addCalibrationHistory(calibrationData,lab_id,equipment_id);
       }
 
       form.reset();

@@ -19,12 +19,14 @@ import { RecordForm } from "../forms/record-form";
 interface MaintenanceRecordsProps {
   mode: "maintenance" | "calibration";
   records: MaintenanceRecord[];
+  lab_id: number;
   equipmentId: number;
   onDelete: (id: number) => Promise<void>;
   onSuccess: () => void;
 }
 
 export function MaintenanceRecords({
+  lab_id,
   mode,
   records,
   equipmentId,
@@ -81,6 +83,8 @@ export function MaintenanceRecords({
             {records.map((record) => (
               <React.Fragment key={record.id}>
                 <MaintenanceRecordRow
+                equipment_id={equipmentId}
+                lab_id={lab_id}
                   mode={mode}
                   record={record}
                   onEdit={(id) => setEditingId(id === editingId ? null : id)}

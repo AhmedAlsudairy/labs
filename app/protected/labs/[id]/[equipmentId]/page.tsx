@@ -265,6 +265,7 @@ export default function EquipmentPage() {
 
           <TabsContent value="maintenance">
             <MaintenanceRecords
+            lab_id={labId}
               mode="maintenance"
               records={maintenanceRecords}
               equipmentId={equipmentId}
@@ -312,6 +313,7 @@ export default function EquipmentPage() {
 
           <TabsContent value="calibration">
             <MaintenanceRecords
+            lab_id={labId}
               mode="calibration"
               records={calibrationData}
               equipmentId={equipmentId}

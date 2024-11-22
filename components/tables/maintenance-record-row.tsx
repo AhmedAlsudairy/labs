@@ -8,6 +8,8 @@ import { useState } from "react";
 import { MaintenanceHistoryTable } from "./maintenance-history-table";
 
 interface MaintenanceRecordRowProps {
+  equipment_id: number;
+  lab_id: number;
   mode: "maintenance" | "calibration";
   record: MaintenanceRecord;
   onEdit: (id: number) => void;
@@ -16,6 +18,8 @@ interface MaintenanceRecordRowProps {
 }
 
 export function MaintenanceRecordRow({
+  equipment_id,
+  lab_id,
   mode,
   record,
   onEdit,
@@ -74,7 +78,9 @@ export function MaintenanceRecordRow({
         <TableRow>
           <TableCell colSpan={6} className="p-4 bg-gray-50 dark:bg-gray-800">
             <MaintenanceHistoryTable
+            equipment_id={equipment_id}
               mode={mode}
+              lab_id={lab_id}
               scheduleId={record.id}
               frequency={record.frequency}
               onRefresh={() => {

@@ -70,15 +70,15 @@ export function calculateNextDate( frequency: Frequency,currentDate?: string | D
 }
 
 
-export const getStateBackgroundColor = (state: maintanace_state) => {
-  switch (state) {
-    case 'done':
-      return 'bg-green-100 dark:bg-green-900';
-    case 'need maintance':
-      return 'bg-yellow-100 dark:bg-yellow-900';
-    case 'late maintance':
-      return 'bg-red-100 dark:bg-red-900';
-    default:
-      return '';
-  }
-};
+// export const getStateBackgroundColor = (state: maintanace_state) => {
+//   switch (state) {
+//     case 'done':
+//       return 'bg-green-100 dark:bg-green-900';
+//     case 'need maintance':
+//       return 'bg-yellow-100 dark:bg-yellow-900';
+//     case 'late maintance':
+//       return 'bg-red-100 dark:bg-red-900';
+//     default:
+//       return '';
+//   }
+// };
