@@ -709,7 +709,7 @@ console.log("herrrrrree",updateError)
   const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
   
   const emailContent = {
-    to: ['micronboy111@gmail.com'],
+    to: ['micronboy632@gmail.com'],
     title: `Equipment Maintenance Status Update: ${data.state}`,
     body: `
       Equipment maintenance status has been updated to: ${data.state}<br/>
@@ -754,7 +754,7 @@ export async function addCalibrationHistory(
   const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
   
   const emailContent = {
-    to: ['micronboy111@gmail.com'],
+    to: ['micronboy632@gmail.com'],
     title: `Equipment Calibration Status Update: ${data.state}`,
     body: `
       Equipment calibration status has been updated to: ${data.state}<br/>
