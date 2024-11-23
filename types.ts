@@ -37,6 +37,8 @@ export type Equipment = {
   receiptDate: string;
   supplier: string;
   type: string;
+  calibrationState?: 'calibrated' | 'need calibration' | 'late calibration' |'none';
+  maintenanceState?: 'done' | 'need maintance' | 'late maintance';
 };
 
 // Add a new type for creating equipment
@@ -77,6 +79,8 @@ export type EquipmentUsage = {
   type: string;
   name: string;
   usage: number;
+  calibrationState?: 'calibrated' | 'need calibration' | 'late calibration';
+  maintenanceState?: 'done' | 'need maintance' | 'late maintance';
 };
 
 // CreateUserParams

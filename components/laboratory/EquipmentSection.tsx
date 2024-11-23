@@ -37,6 +37,7 @@ interface EquipmentSectionProps {
   onDeleteEquipment: (equipmentId: number) => Promise<void>;
 }
 
+
 export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   labId,
   equipment,
@@ -123,6 +124,33 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     }
   };
 
+  // Add helper function for state badge variants
+  const getCalibrationBadgeVariant = (state: string | undefined) => {
+    switch (state) {
+      case 'calibrated':
+        return 'success';
+      case 'need calibration':
+        return 'warning';
+      case 'late calibration':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
+
+  const getMaintenanceBadgeVariant = (state: string | undefined) => {
+    switch (state) {
+      case 'done':
+        return 'success';
+      case 'need maintance':
+        return 'warning';
+      case 'late maintance':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -171,6 +199,8 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               <TableHead>Serial Number</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Lab Section</TableHead>
+              <TableHead>Calibration</TableHead>
+              <TableHead>Maintenance</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -194,6 +224,20 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                   </Badge>
                 </TableCell>
                 <TableCell>{item.labSection}</TableCell>
+                <TableCell>
+                  {item.calibrationState && (
+                    <Badge variant={getCalibrationBadgeVariant(item.calibrationState)}>
+                      {item.calibrationState}
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {item.maintenanceState && (
+                    <Badge variant={getMaintenanceBadgeVariant(item.maintenanceState)}>
+                      {item.maintenanceState}
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button

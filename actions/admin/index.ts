@@ -179,6 +179,14 @@ export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]
         receipt_date,
         supplier,
         status
+      ),
+      calibration_schedule (
+        state,
+        next_date
+      ),
+      maintenance_schedule (
+        state,
+        next_date
       )
     `)
     .eq('lab_id', labId);
@@ -188,10 +196,10 @@ export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]
     throw error;
   }
 
-  console.log('Raw equipment data:', data); // Debug log
-
   return data.map(eq => {
     const deviceData = eq.device?.[0] || {};
+    const calibrationData = eq.calibration_schedule?.[0] || {};
+    const maintenanceData = eq.maintenance_schedule?.[0] || {};
     
     return {
       id: eq.equipment_id,
@@ -206,7 +214,11 @@ export async function getEquipmentUsage(labId: number): Promise<EquipmentUsage[]
       receiptDate: deviceData.receipt_date || '',
       supplier: deviceData.supplier || '',
       type: eq.type || '',
-      usage: 100 // You might want to calculate this based on your actual data
+      usage: 100,
+      calibrationState: calibrationData.state,
+      maintenanceState: maintenanceData.state,
+      nextCalibrationDate: calibrationData.next_date,
+      nextMaintenanceDate: maintenanceData.next_date
     };
   });
 }

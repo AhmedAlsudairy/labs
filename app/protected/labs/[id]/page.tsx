@@ -83,6 +83,8 @@ export default function LaboratoryPage() {
           receiptDate: eu.receiptDate || '',
           supplier: eu.supplier || '',
           type: eu.type || '',
+          calibrationState: eu.calibrationState || 'none',
+      maintenanceState: eu.maintenanceState ||'done',
         })),
       });
     } catch (error) {

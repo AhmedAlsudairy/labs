@@ -94,7 +94,7 @@ export function MaintenanceRecordRow({
   );
 }
 
-const StateIndicator = ({ state }: { state: maintanace_state }) => {
+export const StateIndicator = ({ state }: { state: maintanace_state }) => {
   const variants: Record<
     maintanace_state,
     "success" | "warning" | "destructive"

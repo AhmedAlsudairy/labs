@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { MaintenanceHistoryForm } from "../forms/maintenance-history-form";
 import { Frequency, EquipmentHistory, MaintenanceEquipmentHistory, CalibrationEquipmentHistory } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { StateIndicator } from "./maintenance-record-row";
 
 // Types
 
@@ -95,9 +96,16 @@ export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, 
           {histories.map((history) => (
             <TableRow key={history.history_id}>
               <TableCell>
-                {new Date(history.performed_date).toLocaleDateString()}
+      {history.performed_date
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+    }).format(new Date(history.performed_date))
+    : "N/A"}
+
               </TableCell>
-              <TableCell>{history.state}</TableCell>
+              {history.state && <StateIndicator state={history.state} />}
               <TableCell>{history.description}</TableCell>
               <TableCell>
                 {isCalibrationHistory(history) 
