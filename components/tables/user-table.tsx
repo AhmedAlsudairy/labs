@@ -34,10 +34,20 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
   const [editingGovernorate, setEditingGovernorate] = useState<string>("")
   const [editingLabId, setEditingLabId] = useState<string>("")
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
+  const [oldRole, setOldRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     fetchLaboratories();
   }, []);
+
+  useEffect(() => {
+    if (editingUserId) {
+      const user = users.find(u => u.id === editingUserId);
+      if (user) {
+        setOldRole(user.role as UserRole);
+      }
+    }
+  }, [editingUserId]);
 
   const fetchLaboratories = async () => {
     try {
@@ -50,30 +60,50 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
 
   const handleEdit = async (userId: string) => {
     try {
-      const metadata: any = {
-        role: editingUserRole
-      };
-
-      if (editingUserRole === 'cordinator' && editingGovernorate) {
-        metadata.governorate = editingGovernorate;
-      } else if (editingUserRole === 'lab in charge' && editingLabId) {
-        metadata.labId = editingLabId;
+      if (!oldRole) {
+        toast({
+          title: "Error",
+          description: "Could not determine current role",
+          variant: "destructive",
+        });
+        return;
       }
 
-      await updateUserRole(userId, editingUserRole, metadata)
+      const metadata = {
+        ...(editingUserRole === 'cordinator' ? { governorate: editingGovernorate } : {}),
+        ...(editingUserRole === 'lab in charge' ? { labId: editingLabId } : {})
+      };
+
+      await updateUserRole(
+        userId,
+        editingUserRole,
+        oldRole,
+        metadata
+      );
+console.log(userId, editingUserRole, oldRole, metadata)
       toast({
         title: "Success",
         description: "User role updated successfully",
-      })
-      onUserUpdated()
-      setEditingUserId(null)
+      });
+
+      // Reset states
+      setEditingUserId("");
+      setEditingUserRole("lab in charge");
+      setEditingGovernorate("");
+      setEditingLabId("");
+      setOldRole(null);
+      
+      // Refresh user list if needed
+      if (onUserUpdated) {
+        onUserUpdated();
+      }
     } catch (error) {
-      console.error('Error updating user role:', error)
+      console.error('Error updating user role:', error);
       toast({
         title: "Error",
-        description: "Failed to update user role. Please try again.",
+        description: "Failed to update user role",
         variant: "destructive",
-      })
+      });
     }
   }
 

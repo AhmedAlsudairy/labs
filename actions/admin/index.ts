@@ -11,21 +11,18 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-
-
-
 export async function updateUserRole(
   userId: string, 
-  newRole: UserRole, 
+  newRole: UserRole,
+  oldRole: UserRole,
   metadata: { 
     governorate?: string; 
     labId?: string; 
   }
 ) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user?.role !== 'admin') {
-    return { error: 'Unauthorized. Only admins can update user roles.' };
-  }
+  console.log('Starting updateUserRole with:', { userId, newRole, oldRole, metadata });
+
+ 
 
   const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff'];
   if (!validRoles.includes(newRole)) {
@@ -45,17 +42,74 @@ export async function updateUserRole(
     const { data, error } = await supabase.auth.admin.updateUserById(
       userId,
       {
-        role: newRole, 
-        user_metadata: { 
+        user_metadata: {
+          role: newRole,
           ...(newRole === 'cordinator' && { governorate: metadata.governorate }),
           ...(newRole === 'lab in charge' && { labId: metadata.labId }),
-        } 
+        }
       }
     );
+
+    console.log('Auth update result:', { data, error });
 
     if (error) {
       console.error('Error updating user role:', error);
       return { error: 'Failed to update user role.' };
+    }
+
+    // Handle laboratory manager updates
+    if (oldRole === 'lab in charge') {
+      console.log('Clearing old lab manager_id for user:', userId);
+      const { data: clearData, error: clearError } = await supabase
+        .from('laboratory')
+        .update({ manager_id: null })
+        .eq('manager_id', userId)
+        .select();
+
+      console.log('Clear manager result:', { clearData, clearError });
+
+      if (clearError) {
+        console.error('Error clearing old laboratory manager:', clearError);
+      }
+    }
+
+    if (newRole === 'lab in charge' && metadata.labId) {
+      console.log('Setting new lab manager_id:', { 
+        userId, 
+        labId: metadata.labId 
+      });
+
+      // First check if lab exists
+      const { data: labCheck } = await supabase
+        .from('laboratory')
+        .select('lab_id, manager_id')
+        .eq('lab_id', metadata.labId)
+        .single();
+
+      console.log('Lab check result:', labCheck);
+
+      // Update manager_id
+      const { data: updateData, error: updateError } = await supabase
+        .from('laboratory')
+        .update({ manager_id: userId })
+        .eq('lab_id', metadata.labId)
+        .select();
+
+      console.log('Update manager result:', { updateData, updateError });
+
+      if (updateError) {
+        console.error('Error updating laboratory manager:', updateError);
+        return { error: 'Failed to update laboratory manager.' };
+      }
+
+      // Verify update
+      const { data: verifyData } = await supabase
+        .from('laboratory')
+        .select('manager_id')
+        .eq('lab_id', metadata.labId)
+        .single();
+
+      console.log('Verification result:', verifyData);
     }
 
     return { 
@@ -107,7 +161,17 @@ export async function createUser({ email, password, role, name, metadata }: Crea
     }
 
     console.log('User created successfully:', newUser.user.id);
-
+    if (role === 'lab in charge' && newUser?.user) {
+      try {
+        // Update the laboratory with the new manager's ID
+        await supabase
+          .from('laboratory')
+          .update({ manager_id: newUser.user.id })
+          .eq('lab_id', metadata?.labId);
+      } catch (error) {
+        console.error('Error updating laboratory manager:', error);
+      }
+    }
     return { success: true, message: `User created successfully with role: ${role}` };
   } catch (error) {
     console.error('Unexpected error creating user:', error);
@@ -120,20 +184,18 @@ export async function deleteUser(userId: string) {
   return data;
 }
 
-
-
 export async function createLaboratory(laboratory: CreateLaboratoryParams) {
   const { data, error } = await supabase.from('laboratory').insert(laboratory);
   if (error) throw error;
   return data;
 }
 
-
 //labs
 //get labs
 export async function getLaboratories() {
   const { data, error } = await supabase.from('laboratory').select('*');
   if (error) throw error;
+  console.log(error)
   return data;
 }
 
@@ -155,6 +217,11 @@ export async function getLaboratoryById(labId: number): Promise<Laboratory> {
   return data;
 }
 
+export async function getLaboratoryUserId(userId: string): Promise<Laboratory> {
+  const { data, error } = await supabase.from('laboratory').select('*').eq('manager_id', userId).single();
+  if (error) throw error;
+  return data;
+}
 //labs end here
 
 export async function getUsers() {
@@ -300,9 +367,6 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
   };
 }
 
-
-
-
 export async function updateMaintenanceRecord(
   recordId: number, 
   recordData: Partial<MaintenanceRecord>
@@ -350,7 +414,6 @@ export async function deleteMaintenanceRecord(recordId: number): Promise<{ succe
   if (error) throw error;
   return { success: true };
 }
-
 
 export async function addMaintenanceRecord(
   recordData: Omit<MaintenanceRecord, 'id'>
@@ -402,8 +465,6 @@ export async function getMaintenanceRecords(equipmentId: number): Promise<Mainte
     frequency: record.frequency
   }));
 }
-
-
 
 export async function getExternalControls(equipmentId: number): Promise<ExternalControl[]> {
   const { data, error } = await supabase
@@ -510,7 +571,6 @@ export async function updateCalibrationRecord(
 }
 // Delete calibration record
 
-
 export async function deleteCalibrationRecord(recordId: number): Promise<{ success: boolean }> {
   const { error } = await supabase
     .from('calibration_schedule')
@@ -521,10 +581,7 @@ console.log(error)
   return { success: true };
 }
 
-
 // actions/admin.ts
-
-
 
 export async function getEquipmentById(equipmentId: number): Promise<Equipment> {
   console.log(`[getEquipmentById] Fetching equipment with ID: ${equipmentId}`);
@@ -594,7 +651,6 @@ console.log(data)
     throw new Error(`Failed to fetch equipment data: ${(error as Error).message}`);
   }
 }
-
 
 //TODO::this need fixing
 export async function updateEquipment(equipmentId: number, equipmentData: Partial<Equipment>): Promise<Equipment> {
@@ -688,8 +744,6 @@ export async function deleteEquipment(equipmentId: number): Promise<{ success: b
     throw new Error(`Failed to delete equipment: ${(error as Error).message}`);
   }
 }
-
-
 
 // Add history for maintenance schedule
 export async function addMaintenanceHistory(
