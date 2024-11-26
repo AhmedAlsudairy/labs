@@ -652,41 +652,102 @@ console.log(data)
   }
 }
 
-//TODO::this need fixing
+// TODO::this need fixing
 export async function updateEquipment(equipmentId: number, equipmentData: Partial<Equipment>): Promise<Equipment> {
-  const { data, error } = await supabase
-    .from('equipment')
-    .update({ 
-      type: equipmentData.name,
-      status: equipmentData.status,
-      model: equipmentData.model,
-      serial_number: equipmentData.serialNumber,
-      description: equipmentData.description,
-      lab_section: equipmentData.labSection,
-      manufacturer: equipmentData.manufacturer,
-      manufacture_date: equipmentData.manufactureDate,
-      receipt_date: equipmentData.receiptDate,
-      supplier: equipmentData.supplier,
-    })
-    .eq('equipment_id', equipmentId)
-    .select()
-    .single();
+  console.log('Updating equipment:', { equipmentId, equipmentData });
+  
+  try {
+    // Update equipment table only if type is provided
+    let equipmentData_; 
+    if (equipmentData.type) {
+      const { data, error: equipmentError } = await supabase
+        .from('equipment')
+        .update({ type: equipmentData.type })
+        .eq('equipment_id', equipmentId)
+        .select()
+        .single();
+        
+      if (equipmentError) throw equipmentError;
+      equipmentData_ = data;
+    } else {
+      const { data, error } = await supabase
+        .from('equipment')
+        .select()
+        .eq('equipment_id', equipmentId)
+        .single();
+      if (error) throw error;
+      equipmentData_ = data;
+    }
 
-  if (error) throw error;
-  return {
-    id: data.equipment_id,
-    name: data.type,
-    status: data.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
-    model: data.model,
-    serialNumber: data.serial_number,
-    description: data.description,
-    labSection: data.lab_section,
-    manufacturer: data.manufacturer,
-    manufactureDate: data.manufacture_date,
-    receiptDate: data.receipt_date,
-    supplier: data.supplier,
-    type: data.type,
-  };
+    // Build device update object with only defined fields
+    const deviceUpdate: any = {};
+    if (equipmentData.name) deviceUpdate.name = equipmentData.name;
+    if (equipmentData.model) deviceUpdate.model = equipmentData.model;
+    if (equipmentData.serialNumber) deviceUpdate.serial_number = equipmentData.serialNumber;
+    if (equipmentData.description) deviceUpdate.description = equipmentData.description;
+    if (equipmentData.labSection) deviceUpdate.lab_section = equipmentData.labSection;
+    if (equipmentData.manufacturer) deviceUpdate.manufacturer = equipmentData.manufacturer;
+    if (equipmentData.manufactureDate) deviceUpdate.manufacture_date = equipmentData.manufactureDate;
+    if (equipmentData.receiptDate) deviceUpdate.receipt_date = equipmentData.receiptDate;
+    if (equipmentData.supplier) deviceUpdate.supplier = equipmentData.supplier;
+    if (equipmentData.status) deviceUpdate.status = equipmentData.status;
+
+    // Only update device if there are fields to update
+    if (Object.keys(deviceUpdate).length > 0) {
+      const { data: deviceData, error: deviceError } = await supabase
+        .from('device')
+        .update(deviceUpdate)
+        .eq('equipment_id', equipmentId)
+        .select()
+        .single();
+
+      if (deviceError) throw deviceError;
+
+      // Return combined data
+      return {
+        id: equipmentData_.equipment_id,
+        name: deviceData.name,
+        status: deviceData.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
+        model: deviceData.model,
+        serialNumber: deviceData.serial_number,
+        description: deviceData.description,
+        labSection: deviceData.lab_section,
+        manufacturer: deviceData.manufacturer,
+        manufactureDate: deviceData.manufacture_date,
+        receiptDate: deviceData.receipt_date,
+        supplier: deviceData.supplier,
+        type: equipmentData_.type,
+      };
+    }
+
+    // If no device updates, fetch current device data
+    const { data: currentDevice, error: fetchError } = await supabase
+      .from('device')
+      .select()
+      .eq('equipment_id', equipmentId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+
+    return {
+      id: equipmentData_.equipment_id,
+      name: currentDevice.name,
+      status: currentDevice.status as 'Operational' | 'Under Maintenance' | 'Out of Service',
+      model: currentDevice.model,
+      serialNumber: currentDevice.serial_number,
+      description: currentDevice.description,
+      labSection: currentDevice.lab_section,
+      manufacturer: currentDevice.manufacturer,
+      manufactureDate: currentDevice.manufacture_date,
+      receiptDate: currentDevice.receipt_date,
+      supplier: currentDevice.supplier,
+      type: equipmentData_.type,
+    };
+
+  } catch (err) {
+    console.error('Error updating equipment:', err);
+    throw err;
+  }
 }
 
 export async function deleteEquipment(equipmentId: number): Promise<{ success: boolean }> {
