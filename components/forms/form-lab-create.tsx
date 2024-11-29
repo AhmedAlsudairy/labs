@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createLaboratory } from "@/actions/admin";
 import { toast } from "@/hooks/use-toast";
-import { CreateLaboratoryParams } from "@/types";
+import { OmanGovernorate, CreateLaboratoryParams } from "@/types";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +22,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Add lab categories constant
 const labCategories = [
@@ -36,7 +45,7 @@ interface CreateLabFormProps {
 export default function CreateLabForm({ onLabCreated }: CreateLabFormProps) {
   const [lab, setLab] = useState<CreateLaboratoryParams>({
     name: "",
-    location_state: "",
+    location_state: OmanGovernorate.MUSCAT, // Using enum value
     location_city: "",
     manager_name: "",
     contact_number: "",
@@ -57,7 +66,7 @@ export default function CreateLabForm({ onLabCreated }: CreateLabFormProps) {
       });
       setLab({
         name: "",
-        location_state: "",
+        location_state: OmanGovernorate.MUSCAT, // Using enum value
         location_city: "",
         manager_name: "",
         contact_number: "",
@@ -101,13 +110,26 @@ export default function CreateLabForm({ onLabCreated }: CreateLabFormProps) {
           </div>
           <div>
             <Label htmlFor="location_state">State</Label>
-            <Input
-              id="location_state"
-              name="location_state"
+            <Select
               value={lab.location_state}
-              onChange={handleInputChange}
-              required
-            />
+              onValueChange={(value: OmanGovernorate) =>
+                setLab((prev) => ({ ...prev, location_state: value }))
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select governorate" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Governorates</SelectLabel>
+                  {Object.values(OmanGovernorate).map((governorate) => (
+                    <SelectItem key={governorate} value={governorate}>
+                      {governorate}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label htmlFor="location_city">City</Label>

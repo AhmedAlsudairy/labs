@@ -10,7 +10,7 @@ export type User = {
   };
 };
 // Laboratory
-export type Laboratory = {
+export interface Laboratory {
   lab_id: number;
   name: string;
   location_city: string;
@@ -18,8 +18,9 @@ export type Laboratory = {
   manager_name: string;
   contact_number: string;
   email: string;
-  lab_category: "food"  | "animal" | "human" 
-};
+  lab_category: "food" | "animal" | "human";
+  user?: User; // Optional user field
+}
 
 // Equipment
 // Update this in your types file (e.g., @/types.ts)
@@ -45,16 +46,31 @@ export type Equipment = {
 export type CreateEquipmentInput = Omit<Equipment, 'id'>;
 // CreateLaboratoryParams
 
+export enum OmanGovernorate {
+  MUSCAT = "Muscat",
+  DHOFAR = "Dhofar",
+  MUSANDAM = "Musandam",
+  AL_BURAIMI = "Al Buraimi",
+  AD_DAKHILIYAH = "Ad Dakhiliyah",
+  AL_BATINAH_NORTH = "Al Batinah North",
+  AL_BATINAH_SOUTH = "Al Batinah South",
+  AL_SHARQIYAH_NORTH = "Al Sharqiyah North",
+  AL_SHARQIYAH_SOUTH = "Al Sharqiyah South",
+  AD_DHAHIRAH = "Ad Dhahirah",
+  AL_WUSTA = "Al Wusta"
+}
+
+// Update CreateLaboratoryParams to use the enum
 export type CreateLaboratoryParams = {
   name: string;
-  location_state: string;
+  location_state: OmanGovernorate;
   location_city: string;
   manager_name: string;
   contact_number: string;
   email: string;
-  lab_category: "food"  | "animal" | "human" 
-
+  lab_category: "food" | "animal" | "human"
 };
+
 export type Staff = {
   id: number;
   name: string;
@@ -118,6 +134,7 @@ export type CalibrationData = {
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
 export type maintanace_state= 'done' | 'need maintance' | 'late maintance'|'calibrated'|'need calibration'|'late calibration';
 
+export type user_category= "food" | "animal" | "human"
 
 
 export type maintanace_role= 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';

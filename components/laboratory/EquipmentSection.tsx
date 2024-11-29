@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import {
   Table,
   TableBody,
@@ -22,9 +21,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Trash2, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import DeviceMaintenanceForm from "../main-form/device-form";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface EquipmentSectionProps {
   labId: number;
@@ -36,7 +36,6 @@ interface EquipmentSectionProps {
   ) => Promise<void>;
   onDeleteEquipment: (equipmentId: number) => Promise<void>;
 }
-
 
 export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   labId,
@@ -152,155 +151,135 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden">
+      <CardHeader className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle>Equipment</CardTitle>
-            <CardDescription>click to equipment name to go specific equipment</CardDescription>
+            <CardTitle>Equipment Management</CardTitle>
+            <CardDescription>Click equipment name for details</CardDescription>
           </div>
-          <Button onClick={handleAdd}>
+          <Button 
+            onClick={handleAdd}
+            disabled={isLoading}
+            className="shadow-sm"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Equipment
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {showEquipmentForm && (
-          <div className="mb-6">
-            <div className="bg-background p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-4">
-                {editingEquipment ? "Edit Equipment" : "Add New Equipment"}
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                {editingEquipment
-                  ? "Update the equipment details below."
-                  : "Fill in the equipment details below."}
-              </p>
-              {/* TODO:here the edit form */}
-              <DeviceMaintenanceForm
-                labId={labId}
-                onSubmit={handleSubmit}
-                onCancel={() => {
-                  setShowEquipmentForm(false);
-                  setEditingEquipment(null);
-                }}
-                initialData={editingEquipment || undefined}
-              />
-            </div>
-          </div>
-        )}
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Serial Number</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Lab Section</TableHead>
-              <TableHead>Calibration</TableHead>
-              <TableHead>Maintenance</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {equipment.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <Link
-                    className="w-full block px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 rounded-md cursor-pointer font-medium text-primary hover:underline"
-                    href={`/protected/labs/${labId}/${item.id}`}
-                    passHref
-                  >
-                    {item.name}
-                  </Link>
-                </TableCell>
-                <TableCell>{item.model}</TableCell>
-                <TableCell>{item.serialNumber}</TableCell>
-                <TableCell>
-                  <Badge variant={getStatusBadgeVariant(item.status)}>
-                    {item.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{item.labSection}</TableCell>
-                <TableCell>
-                  {item.calibrationState && (
-                    <Badge variant={getCalibrationBadgeVariant(item.calibrationState)}>
-                      {item.calibrationState}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {item.maintenanceState && (
-                    <Badge variant={getMaintenanceBadgeVariant(item.maintenanceState)}>
-                      {item.maintenanceState}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-{
-//1-done maintance form today
-//2-add description show manu fac note notes
-//3-then only show late or under maintanace eqs
-//4-then if maintance done set eq to oprational
-
-
-}
-
-
-
-
-
-
-
-
-
-        {/* <Dialog open={showEquipmentForm} onOpenChange={setShowEquipmentForm}>
-          <DialogContent className="max-w-4xl z-50">
-            <DialogHeader>
-              <DialogTitle>
-                {editingEquipment ? 'Edit Equipment' : 'Add New Equipment'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingEquipment 
-                  ? 'Update the equipment details below.' 
-                  : 'Fill in the equipment details below.'}
-              </DialogDescription>
-            </DialogHeader>
+      <CardContent className="p-0">
+        {showEquipmentForm && !editingEquipment && (
+          <div className="border-b p-6 bg-muted/50">
             <DeviceMaintenanceForm
               labId={labId}
               onSubmit={handleSubmit}
-              onCancel={() => {
-                setShowEquipmentForm(false);
-                setEditingEquipment(null);
-              }}
-              initialData={editingEquipment || undefined}
+              onCancel={() => setShowEquipmentForm(false)}
             />
-          </DialogContent>
-        </Dialog> */}
+          </div>
+        )}
+
+        <div className="relative">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[200px]">Name</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead>Serial Number</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Lab Section</TableHead>
+                <TableHead>Calibration</TableHead>
+                <TableHead>Maintenance</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {equipment.map((item) => (
+                <>
+                  <TableRow 
+                    key={item.id}
+                    className={cn(
+                      "group hover:bg-muted/50 transition-colors",
+                      editingEquipment?.id === item.id && "bg-muted"
+                    )}
+                  >
+                    <TableCell>
+                      <Link
+                        className="text-primary hover:underline font-medium"
+                        href={`/protected/labs/${labId}/${item.id}`}
+                      >
+                        {item.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{item.model}</TableCell>
+                    <TableCell>{item.serialNumber}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(item.status)}>
+                        {item.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{item.labSection}</TableCell>
+                    <TableCell>
+                      {item.calibrationState && (
+                        <Badge variant={getCalibrationBadgeVariant(item.calibrationState)}>
+                          {item.calibrationState}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.maintenanceState && (
+                        <Badge variant={getMaintenanceBadgeVariant(item.maintenanceState)}>
+                          {item.maintenanceState}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(item)}
+                          disabled={isLoading}
+                        >
+                          {editingEquipment?.id === item.id ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <Edit className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={isLoading}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {editingEquipment?.id === item.id && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="p-0">
+                        <div className="border-t bg-muted/50 p-6">
+                          <DeviceMaintenanceForm
+                            labId={labId}
+                            onSubmit={handleSubmit}
+                            onCancel={() => {
+                              setShowEquipmentForm(false);
+                              setEditingEquipment(null);
+                            }}
+                            initialData={editingEquipment}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );

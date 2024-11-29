@@ -1,6 +1,6 @@
 'use server';
 
-import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, EquipmentHistory } from '@/types';
+import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, EquipmentHistory, OmanGovernorate, user_category } from '@/types';
 import { sendEmail } from '@/utils/resend/email';
 import { calculateNextDate } from '@/utils/utils';
 import { createClient } from '@supabase/supabase-js';
@@ -17,12 +17,11 @@ export async function updateUserRole(
   oldRole: UserRole,
   metadata: { 
     governorate?: string; 
-    labId?: string; 
+    labId?: string;
+    user_category: user_category; // Added user_category as required field
   }
 ) {
   console.log('Starting updateUserRole with:', { userId, newRole, oldRole, metadata });
-
- 
 
   const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff'];
   if (!validRoles.includes(newRole)) {
@@ -38,12 +37,18 @@ export async function updateUserRole(
     return { error: 'Laboratory must be specified for lab in charge role.' };
   }
 
+  // Validate user_category
+  if (!metadata.user_category) {
+    return { error: 'User category must be specified.' };
+  }
+
   try {
     const { data, error } = await supabase.auth.admin.updateUserById(
       userId,
       {
         user_metadata: {
           role: newRole,
+          user_category: metadata.user_category, // Add user_category to metadata
           ...(newRole === 'cordinator' && { governorate: metadata.governorate }),
           ...(newRole === 'lab in charge' && { labId: metadata.labId }),
         }
@@ -114,7 +119,7 @@ export async function updateUserRole(
 
     return { 
       success: true, 
-      message: `User role updated to ${newRole}${
+      message: `User role updated to ${newRole} (${metadata.user_category})${
         metadata.governorate ? ` for ${metadata.governorate} governorate` : ''
       }${
         metadata.labId ? ` for laboratory ${metadata.labId}` : ''
@@ -957,4 +962,143 @@ export async function getHistoryById(historyId: number) {
 
   if (error) return { error };
   return { data };
+}
+
+
+export async function getUsersByLaboratories(
+  state: OmanGovernorate,
+  lab_category: 'food' | 'animal' | 'human'
+): Promise<Laboratory[]> {
+  if (!state || !lab_category) {
+    throw new Error('Both state and lab_category are required');
+  }
+
+  // First get laboratories
+  const { data: labs, error: labError } = await supabase
+    .from('laboratory')
+    .select('*')
+    .eq('location_state', state)
+    .eq('lab_category', lab_category);
+
+  if (labError) {
+    console.error('Error fetching laboratories:', labError);
+    throw labError;
+  }
+
+  // For each lab, get the manager details from auth.users
+  const laboratoriesWithUsers: Laboratory[] = await Promise.all(
+    (labs || []).map(async (lab) => {
+      if (lab.manager_id) {
+        const { data: userData, error: userError } = await supabase.auth
+          .admin.getUserById(lab.manager_id);
+
+        if (userError) {
+          console.error(`Error fetching user for lab ${lab.lab_id}:`, userError);
+          return {
+            ...lab,
+            user: undefined
+          };
+        }
+
+        return {
+          ...lab,
+          user: userData ? {
+            id: userData.user.id,
+            name: userData.user.user_metadata?.name || '',
+            email: userData.user.email || '',
+            role: userData.user.user_metadata?.role as UserRole,
+            metadata: {
+              governorate: userData.user.user_metadata?.governorate,
+              labId: userData.user.user_metadata?.labId
+            }
+          } : undefined
+        };
+      }
+      return lab;
+    })
+  );
+
+  return laboratoriesWithUsers;
+}
+
+export async function getLaboratoriesByState(
+  state: OmanGovernorate
+): Promise<Laboratory[]> {
+  // Input validation
+  if (!state) {
+    throw new Error('State parameter is required');
+  }
+
+  // Query laboratories by state
+  const { data: labs, error } = await supabase
+    .from('laboratory')
+    .select('*')
+    .eq('location_state', state);
+
+  // Error handling
+  if (error) {
+    console.error('Error fetching laboratories:', error);
+    throw error;
+  }
+
+  // Return results
+  return labs || [];
+}
+
+
+
+
+
+export async function updateUserLabAssignment(
+  userId: string,
+  labId: string
+): Promise<{ data?: any; error?: string }> {
+  console.log('Starting updateUserLabAssignment:', { userId, labId });
+
+  try {
+    // First update user metadata
+    const { data: userData, error: userError } = await supabase.auth.admin.updateUserById(
+      userId,
+      {
+        user_metadata: {
+          labId: labId,
+          role: 'lab in charge'  // Ensure role is set to lab in charge
+        }
+      }
+    );
+
+    if (userError) {
+      console.error('Error updating user metadata:', userError);
+      return { error: 'Failed to update user metadata' };
+    }
+
+    // Clear any existing lab assignments for this user
+    const { error: clearError } = await supabase
+      .from('laboratory')
+      .update({ manager_id: null })
+      .eq('manager_id', userId);
+
+    if (clearError) {
+      console.error('Error clearing previous lab assignments:', clearError);
+      return { error: 'Failed to clear previous lab assignments' };
+    }
+
+    // Update new laboratory with this manager
+    const { data: labData, error: labError } = await supabase
+      .from('laboratory')
+      .update({ manager_id: userId })
+      .eq('lab_id', labId)
+      .select();
+
+    if (labError) {
+      console.error('Error updating laboratory manager:', labError);
+      return { error: 'Failed to update laboratory manager' };
+    }
+
+    return { data: labData };
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return { error: 'An unexpected error occurred' };
+  }
 }

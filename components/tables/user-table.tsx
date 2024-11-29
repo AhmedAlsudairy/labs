@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, UserRole, Laboratory } from "@/types"
+import { User, UserRole, Laboratory, user_category } from "@/types"
 import { updateUserRole, deleteUser, getLaboratories } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
 
@@ -35,6 +35,7 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
   const [editingLabId, setEditingLabId] = useState<string>("")
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [oldRole, setOldRole] = useState<UserRole | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<user_category>('food');
 
   useEffect(() => {
     fetchLaboratories();
@@ -71,7 +72,8 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
 
       const metadata = {
         ...(editingUserRole === 'cordinator' ? { governorate: editingGovernorate } : {}),
-        ...(editingUserRole === 'lab in charge' ? { labId: editingLabId } : {})
+        ...(editingUserRole === 'lab in charge' ? { labId: editingLabId } : {}),
+        user_category: selectedCategory,
       };
 
       await updateUserRole(
@@ -233,6 +235,21 @@ console.log(userId, editingUserRole, oldRole, metadata)
                             </Select>
                           </>
                         )}
+
+                        <Label htmlFor="category">Category:</Label>
+                        <Select
+                          value={selectedCategory}
+                          onValueChange={(value: user_category) => setSelectedCategory(value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="food">Food</SelectItem>
+                            <SelectItem value="animal">Animal</SelectItem>
+                            <SelectItem value="human">Human</SelectItem>
+                          </SelectContent>
+                        </Select>
 
                         <Button onClick={() => handleEdit(user.id)}>Update Role</Button>
                       </div>

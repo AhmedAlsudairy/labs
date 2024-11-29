@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createUser, getLaboratories } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
-import { UserRole, Laboratory } from "@/types"
+import { UserRole, Laboratory, user_category } from "@/types"
 
 // Oman governorates list
 const omanGovernorates = [
@@ -37,6 +37,7 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [selectedGovernorate, setSelectedGovernorate] = useState("")
   const [selectedLab, setSelectedLab] = useState("")
+  const [userCategory, setUserCategory] = useState<user_category>('food')
 
   useEffect(() => {
     if (role === "lab in charge") {
@@ -69,7 +70,8 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
         name,
         metadata: {
           ...(role === "cordinator" && { governorate: selectedGovernorate }),
-          ...(role === "lab in charge" && { labId: selectedLab })
+          ...(role === "lab in charge" && { labId: selectedLab }),
+          user_category: userCategory
         }
       }
       const result = await createUser(userParams)
@@ -106,6 +108,7 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
     setName("")
     setSelectedGovernorate("")
     setSelectedLab("")
+    setUserCategory("food")
   }
 
   return (
@@ -197,6 +200,25 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
                       {lab.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {role === "cordinator" && (
+            <div>
+              <Label>User Category</Label>
+              <Select
+                value={userCategory}
+                onValueChange={(value: user_category) => setUserCategory(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="animal">Animal</SelectItem>
+                  <SelectItem value="human">Human</SelectItem>
                 </SelectContent>
               </Select>
             </div>

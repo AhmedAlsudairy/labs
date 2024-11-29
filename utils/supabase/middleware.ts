@@ -95,6 +95,12 @@ const labDashboardUrl = (labId: number) =>
       if (isAdmin && isRootRoute) {
         return NextResponse.redirect(adminDashboardUrl);
       }
+
+      // Check if it's the exact /protected path and user is coordinator
+      if (request.nextUrl.pathname === '/' && 
+          user.data.user.user_metadata.role === 'cordinator') {
+        return NextResponse.redirect(new URL('/protected/cordinator', request.url));
+      }
     }
     return response;
 
