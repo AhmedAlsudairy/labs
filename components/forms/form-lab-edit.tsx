@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { updateLaboratory, getLaboratoryById } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
-import { CreateLaboratoryParams } from "@/types"
+import { CreateLaboratoryParams, Laboratory, OmanGovernorate } from "@/types" // Make sure to import Laboratory type
 
 interface EditLabFormProps {
   labId: number;
@@ -16,13 +16,12 @@ interface EditLabFormProps {
 export default function EditLabForm({ labId, onLabUpdated }: EditLabFormProps) {
   const [lab, setLab] = useState<CreateLaboratoryParams>({
     name: "",
-    location_state: "",
+    location_state: OmanGovernorate.MUSCAT, // Set default value from enum
     location_city: "",
     manager_name: "",
     contact_number: "",
     email: "",
     lab_category: "human",
-
   })
   const [isLoading, setIsLoading] = useState(false)
 
@@ -30,7 +29,16 @@ export default function EditLabForm({ labId, onLabUpdated }: EditLabFormProps) {
     const fetchLab = async () => {
       try {
         const labData = await getLaboratoryById(labId)
-        setLab(labData)
+        // Convert string to enum value and ensure type safety
+        setLab({
+          name: labData.name,
+          location_state: labData.location_state as OmanGovernorate,
+          location_city: labData.location_city,
+          manager_name: labData.manager_name,
+          contact_number: labData.contact_number,
+          email: labData.email,
+          lab_category: labData.lab_category,
+        });
       } catch (error) {
         console.error('Error fetching laboratory:', error)
         toast({
