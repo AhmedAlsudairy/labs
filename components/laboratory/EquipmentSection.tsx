@@ -202,129 +202,131 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           </div>
         )}
 
-        <div className="w-full h-[calc(100vh-200px)] overflow-auto relative"> {/* Adjust height as needed */}
-          <Table className="relative">
-            <TableHeader className="sticky top-0 z-40 bg-background">
-              <TableRow>
-                <TableHead className="sticky left-0 z-50 bg-background border-r w-[200px] min-w-[180px]">
-                  Name
-                </TableHead>
-                <TableHead className="min-w-[120px]"> {/* Removed hidden sm:table-cell */}
-                  Model
-                </TableHead>
-                <TableHead className="min-w-[140px]"> {/* Removed hidden md:table-cell */}
-                  Serial Number
-                </TableHead>
-                <TableHead className="min-w-[100px]">
-                  Status
-                </TableHead>
-                <TableHead className="min-w-[120px]"> {/* Removed hidden lg:table-cell */}
-                  Lab Section
-                </TableHead>
-                <TableHead className="min-w-[120px] whitespace-nowrap">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEquipment.map((item) => (
-                <>
-                  <TableRow 
-                    key={item.id}
-                    className={cn(
-                      "group hover:bg-muted/50 transition-colors",
-                      editingEquipment?.id === item.id && "bg-muted"
-                    )}
-                  >
-                    <TableCell className="font-medium sticky left-0 bg-background z-20">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1">
-                        <Link
-                          className="text-primary hover:underline"
-                          href={`/protected/labs/${labId}/${item.id}`}
-                        >
-                          {item.name}
-                        </Link>
-                        <span className="sm:hidden text-xs text-muted-foreground">
-                          {item.model} • {item.serialNumber}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{item.model}</TableCell>
-                    <TableCell className="hidden md:table-cell">{item.serialNumber}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(item.status)} className="whitespace-nowrap text-xs px-2 py-0.5">
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">{item.labSection}</TableCell>
-                    <TableCell className="w-[120px] min-w-[120px]">
-                      {item.calibrationState && (
-                        <Badge 
-                          variant={getCalibrationBadgeVariant(item.calibrationState)} 
-                          className="text-xs md:text-sm whitespace-nowrap w-full justify-center"
-                        >
-                          {item.calibrationState}
-                        </Badge>
+        <div className="w-full h-full overflow-x-auto">
+          <div className="min-w-[640px] h-full"> {/* Minimum width for table */}
+            <Table>
+              <TableHeader className="sticky top-0 z-30">
+                <TableRow className="bg-background">
+                  <TableHead className="w-[200px] sticky left-0 bg-background z-30 min-w-[180px]">
+                    Name
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell min-w-[120px]">
+                    Model
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell min-w-[140px]">
+                    Serial Number
+                  </TableHead>
+                  <TableHead className="w-[100px] min-w-[100px]">
+                    Status
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell min-w-[120px]">
+                    Lab Section
+                  </TableHead>
+                  <TableHead className="w-[120px] min-w-[120px] whitespace-nowrap">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEquipment.map((item) => (
+                  <>
+                    <TableRow 
+                      key={item.id}
+                      className={cn(
+                        "group hover:bg-muted/50 transition-colors",
+                        editingEquipment?.id === item.id && "bg-muted"
                       )}
-                    </TableCell>
-                    <TableCell className="w-[120px] min-w-[120px]">
-                      {item.maintenanceState && (
-                        <Badge 
-                          variant={getMaintenanceBadgeVariant(item.maintenanceState)} 
-                          className="text-xs md:text-sm whitespace-nowrap w-full justify-center"
-                        >
-                          {item.maintenanceState}
+                    >
+                      <TableCell className="font-medium sticky left-0 bg-background z-20">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                          <Link
+                            className="text-primary hover:underline"
+                            href={`/protected/labs/${labId}/${item.id}`}
+                          >
+                            {item.name}
+                          </Link>
+                          <span className="sm:hidden text-xs text-muted-foreground">
+                            {item.model} • {item.serialNumber}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{item.model}</TableCell>
+                      <TableCell className="hidden md:table-cell">{item.serialNumber}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(item.status)} className="whitespace-nowrap text-xs px-2 py-0.5">
+                          {item.status}
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="sticky right-0 bg-background">
-                      <div className="flex space-x-1 sm:space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 md:h-9 md:w-9"
-                          onClick={() => handleEdit(item)}
-                          disabled={isLoading}
-                        >
-                          {editingEquipment?.id === item.id ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <Edit className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 md:h-9 md:w-9"
-                          onClick={() => handleDelete(item.id)}
-                          disabled={isLoading}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  {editingEquipment?.id === item.id && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="p-0">
-                        <div className="border-t bg-muted/50 p-4 md:p-6">
-                          <DeviceMaintenanceForm
-                            labId={labId}
-                            onSubmit={handleSubmit}
-                            onCancel={() => {
-                              setShowEquipmentForm(false);
-                              setEditingEquipment(null);
-                            }}
-                            initialData={editingEquipment}
-                          />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">{item.labSection}</TableCell>
+                      <TableCell className="w-[120px] min-w-[120px]">
+                        {item.calibrationState && (
+                          <Badge 
+                            variant={getCalibrationBadgeVariant(item.calibrationState)} 
+                            className="text-xs md:text-sm whitespace-nowrap w-full justify-center"
+                          >
+                            {item.calibrationState}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="w-[120px] min-w-[120px]">
+                        {item.maintenanceState && (
+                          <Badge 
+                            variant={getMaintenanceBadgeVariant(item.maintenanceState)} 
+                            className="text-xs md:text-sm whitespace-nowrap w-full justify-center"
+                          >
+                            {item.maintenanceState}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="sticky right-0 bg-background">
+                        <div className="flex space-x-1 sm:space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 md:h-9 md:w-9"
+                            onClick={() => handleEdit(item)}
+                            disabled={isLoading}
+                          >
+                            {editingEquipment?.id === item.id ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <Edit className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 md:h-9 md:w-9"
+                            onClick={() => handleDelete(item.id)}
+                            disabled={isLoading}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  )}
-                </>
-              ))}
-            </TableBody>
-          </Table>
+                    {editingEquipment?.id === item.id && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="p-0">
+                          <div className="border-t bg-muted/50 p-4 md:p-6">
+                            <DeviceMaintenanceForm
+                              labId={labId}
+                              onSubmit={handleSubmit}
+                              onCancel={() => {
+                                setShowEquipmentForm(false);
+                                setEditingEquipment(null);
+                              }}
+                              initialData={editingEquipment}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
         
         {filteredEquipment.length === 0 && (
