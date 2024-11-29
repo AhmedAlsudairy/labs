@@ -103,7 +103,7 @@ const Page = () => {
               Welcome, {user.user_metadata.name}
             </h1>
             <h2 className="text-xl text-muted-foreground">
-              {user.user_metadata.governorate} -{" "}
+              {user.user_metadata.governorate} cordinator-{" "}
               {user.user_metadata.user_category} Labs
             </h2>
           </div>
