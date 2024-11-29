@@ -197,63 +197,72 @@ export default function LaboratoryPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <LaboratoryHeader
-        name={labData.name}
-        locationCity={labData.location_city}
-        locationState={labData.location_state}
-      />
+    <div className="relative w-full min-h-screen bg-background">
+      {/* Remove default page margins and add viewport control */}
+      <div className="w-full h-full overflow-x-hidden">
+        {/* Main content container with controlled width and padding */}
+        <div className="w-full max-w-[2000px] mx-auto px-3 sm:px-4 lg:px-6">
+          {/* Content wrapper with proper spacing */}
+          <div className="w-full py-4 space-y-4 sm:space-y-6">
+            {/* Rest of your components */}
+            <LaboratoryHeader
+              name={labData.name}
+              locationCity={labData.location_city}
+              locationState={labData.location_state}
+            />
+            <LaboratoryInfo
+              managerName={labData.manager_name}
+              contactNumber={labData.contact_number}
+              email={labData.email}
+            />
 
-      <LaboratoryInfo
-        managerName={labData.manager_name}
-        contactNumber={labData.contact_number}
-        email={labData.email}
-      />
+            <StatCards
+              equipmentCount={labData.equipment.length}
+              staffCount={labData.staff.length}
+              activeEquipmentCount={
+                labData.equipment.filter((eq) => eq.status === "Operational").length
+              }
+              maintenanceRecordCount={labData.maintenanceRecords.length}
+            />
 
-      <StatCards
-        equipmentCount={labData.equipment.length}
-        staffCount={labData.staff.length}
-        activeEquipmentCount={
-          labData.equipment.filter((eq) => eq.status === "Operational").length
-        }
-        maintenanceRecordCount={labData.maintenanceRecords.length}
-      />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
+              <Card className="overflow-hidden">
+                <CardHeader className="p-3 sm:p-4">
+                  <CardTitle className="text-base sm:text-lg">Equipment Status</CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 sm:p-4">
+                  <EquipmentStatusChart equipment={labData.equipment} />
+                </CardContent>
+              </Card>
+              
+              <Card className="overflow-hidden">
+                <CardHeader className="p-3 sm:p-4">
+                  <CardTitle className="text-base sm:text-lg">Equipment Usage</CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 sm:p-4">
+                  <EquipmentUsageChart equipmentUsage={labData.equipmentUsage} />
+                </CardContent>
+              </Card>
+            </div>
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Equipment Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EquipmentStatusChart equipment={labData.equipment} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Equipment Usage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EquipmentUsageChart equipmentUsage={labData.equipmentUsage} />
-          </CardContent>
-        </Card>
+            <EquipmentSection
+              labId={labId}
+              equipment={labData.equipment}
+              onAddEquipment={handleEquipmentSubmit}
+              onEditEquipment={handleEquipmentEdit}
+              onDeleteEquipment={handleEquipmentDelete}
+            />
+
+            <StaffSection staff={labData.staff} />
+
+            <MaintenanceSection
+              maintenanceRecords={labData.maintenanceRecords}
+              equipment={labData.equipment}
+              onAddMaintenanceRecord={handleMaintenanceSubmit}
+            />
+          </div>
+        </div>
       </div>
-
-      <EquipmentSection
-        labId={labId}
-        equipment={labData.equipment}
-        onAddEquipment={handleEquipmentSubmit}
-
-        onEditEquipment={handleEquipmentEdit}
-        onDeleteEquipment={handleEquipmentDelete}
-      />
-
-      <StaffSection staff={labData.staff} />
-
-      <MaintenanceSection
-        maintenanceRecords={labData.maintenanceRecords}
-        equipment={labData.equipment}
-        onAddMaintenanceRecord={handleMaintenanceSubmit}
-      />
     </div>
   );
 }
@@ -289,4 +298,3 @@ interface ChartData {
     backgroundColor: string[];
   }[];
 }
-
