@@ -5,6 +5,7 @@ import { sendEmail } from '@/utils/resend/email';
 import { calculateNextDate } from '@/utils/utils';
 import { createClient } from '@supabase/supabase-js';
 import { Result } from 'postcss';
+import { updateCalibrationSchedules, updateMaintenanceSchedules } from './scheduleUpdates';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -84,7 +85,7 @@ export async function updateUserRole(
         labId: metadata.labId 
       });
 
-      // First check if lab exists ..
+      // First check if lab exists
       const { data: labCheck } = await supabase
         .from('laboratory')
         .select('lab_id, manager_id')
@@ -851,7 +852,7 @@ console.log("herrrrrree",updateError)
       View equipment details: <a href="${equipmentUrl}">Click here</a>
     `
   };
-
+  await updateMaintenanceSchedules()
   await sendEmail(emailContent);
 
   return { data: result };
@@ -873,7 +874,7 @@ export async function addCalibrationHistory(
   
   // Update schedule
   const { error: updateError } = await supabase
-    .from('maintenance_schedule')
+    .from('calibration_schedule')
     .update({ 
       state: data.state,
       next_date: data.next_maintenance_date 
@@ -896,8 +897,10 @@ export async function addCalibrationHistory(
       View equipment details: <a href="${equipmentUrl}">Click here</a>
     `
   };
+await updateCalibrationSchedules();
 
   await sendEmail(emailContent);
+  
 
   return { data: result };
 }

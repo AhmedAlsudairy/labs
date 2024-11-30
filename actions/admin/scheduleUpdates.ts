@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
+import { sendEmail } from '@/utils/resend/email';
+import { EquipmentHistory } from '@/types';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
@@ -58,10 +60,19 @@ function determineCalibrationState(nextDate: Date): CalibrationState {
 }
 
 export async function updateMaintenanceSchedules() {
-  // Get all maintenance schedules
+  // Get all maintenance schedules with equipment and lab information
   const { data: maintenanceSchedules, error: maintenanceError } = await supabase
     .from('maintenance_schedule')
-    .select('*');
+    .select(`
+      *,
+      equipment:equipment_id (
+        *,
+        device (*),
+        laboratory:lab_id (
+          *
+        )
+      )
+    `);
 
   if (maintenanceError) {
     console.error('Error fetching maintenance schedules:', maintenanceError);
@@ -73,7 +84,6 @@ export async function updateMaintenanceSchedules() {
     const nextDate = new Date(schedule.next_date);
     const state = determineMaintenanceState(nextDate);
     
-    // If state is 'late maintance' or 'need maintance', calculate the next date based on frequency
     let newNextDate = schedule.next_date;
     if (state !== 'done') {
       newNextDate = calculateNextDate(new Date(), schedule.frequency);
@@ -89,15 +99,53 @@ export async function updateMaintenanceSchedules() {
 
     if (updateError) {
       console.error('Error updating maintenance schedule:', updateError);
+      continue;
+    }
+
+    // Get user details using admin.getUserById
+    if (state !== 'done' && schedule.equipment?.laboratory?.manager_id) {
+      const { data: userData, error: userError } = await supabase.auth
+        .admin.getUserById(schedule.equipment.laboratory.manager_id);
+
+      if (userError) {
+        console.error('Error fetching user:', userError);
+        continue;
+      }
+
+      const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
+      
+      const emailContent = {
+        to: [userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+        title: `Equipment Maintenance Schedule Alert: ${state}`,
+        body: `
+          Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+          Current Status: ${state}<br/>
+          Next maintenance date: ${newNextDate}<br/>
+          Description: ${schedule.description || 'Regular maintenance required'}<br/>
+          <br/>
+          View equipment details: <a href="${equipmentUrl}">Click here</a>
+        `
+      };
+
+      await sendEmail(emailContent);
     }
   }
 }
 
 export async function updateCalibrationSchedules() {
-  // Get all calibration schedules
+  // Get all calibration schedules with equipment and lab information
   const { data: calibrationSchedules, error: calibrationError } = await supabase
     .from('calibration_schedule')
-    .select('*');
+    .select(`
+      *,
+      equipment:equipment_id (
+        *,
+        device (*),
+        laboratory:lab_id (
+          *
+        )
+      )
+    `);
 
   if (calibrationError) {
     console.error('Error fetching calibration schedules:', calibrationError);
@@ -109,7 +157,6 @@ export async function updateCalibrationSchedules() {
     const nextDate = new Date(schedule.next_date);
     const state = determineCalibrationState(nextDate);
     
-    // If state is 'late calibration' or 'need calibration', calculate the next date based on frequency
     let newNextDate = schedule.next_date;
     if (state !== 'calibrated') {
       newNextDate = calculateNextDate(new Date(), schedule.frequency);
@@ -125,6 +172,35 @@ export async function updateCalibrationSchedules() {
 
     if (updateError) {
       console.error('Error updating calibration schedule:', updateError);
+      continue;
+    }
+
+    // Get user details using admin.getUserById
+    if (state !== 'calibrated' && schedule.equipment?.laboratory?.manager_id) {
+      const { data: userData, error: userError } = await supabase.auth
+        .admin.getUserById(schedule.equipment.laboratory.manager_id);
+
+      if (userError) {
+        console.error('Error fetching user:', userError);
+        continue;
+      }
+
+      const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
+      
+      const emailContent = {
+        to: [userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+        title: `Equipment Calibration Schedule Alert: ${state}`,
+        body: `
+          Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+          Current Status: ${state}<br/>
+          Next calibration date: ${newNextDate}<br/>
+          Description: ${schedule.description || 'Regular calibration required'}<br/>
+          <br/>
+          View equipment details: <a href="${equipmentUrl}">Click here</a>
+        `
+      };
+
+      await sendEmail(emailContent);
     }
   }
 }

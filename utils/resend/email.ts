@@ -12,7 +12,7 @@ interface EmailParams {
 export async function sendEmail({ to, title, body }: EmailParams): Promise<{ success: boolean; message: string }> {
   try {
     const data = await resend.emails.send({
-      from: '"Elaf" <noreply@lablaboman.live>',
+      from: '"LabLaboman" <noreply@lablaboman.live>',
       to: to,
       subject: title,
       html: `<p>${body}</p>`
