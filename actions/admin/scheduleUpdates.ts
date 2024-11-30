@@ -167,7 +167,6 @@ export async function updateCalibrationSchedules() {
       newNextDate = calculateNextDate(new Date(), schedule.frequency);
     }
 
-    console.log('nextDate:',  schedule.calibration_schedule_id);
     const { error: updateError } = await supabase
       .from('calibration_schedule')
       .update({ 
