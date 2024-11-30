@@ -813,7 +813,12 @@ export async function deleteEquipment(equipmentId: number): Promise<{ success: b
   }
 }
 
-// Add history for maintenance schedule
+// Helper function to filter out undefined emails
+function filterValidEmails(emails: (string | undefined)[]): string[] {
+  return emails.filter((email): email is string => !!email);
+}
+
+// Modified addMaintenanceHistory function
 export async function addMaintenanceHistory(
   data: Omit<EquipmentHistory, 'history_id' | 'calibration_schedule_id'>, 
   lab_id: number,
@@ -839,22 +844,37 @@ export async function addMaintenanceHistory(
   if (updateError) return { error: updateError };
 console.log("herrrrrree",updateError)
 
-  // Send email notification
-  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
- 
-  const { data:cordinator } = await supabase
-  .rpc('get_lab_matched_users', {
-    p_lab_id: lab_id
-  })
+  const { data: cordinator } = await supabase
+    .rpc('get_lab_matched_users', {
+      p_lab_id: lab_id
+    });
+    const lab = await getLaboratoryById(lab_id);
+    if (!isValidManagerId(lab?.manager_id)) {
+      console.warn('Invalid or missing manager_id');
+      return { error: new Error('Invalid manager_id') };
+    }
 
-  const lab= getLaboratoryById(lab_id)
-  const { data: userData, error: userError } = await supabase.auth
-  .admin.getUserById((await lab).manager_id);
-  const cordinator_email = cordinator[0].email
-  
+    const { data: userData, error: userError } = await supabase.auth
+    .admin.getUserById(lab.manager_id);
+
+  const cordinator_email = cordinator?.[0]?.email;
+  const manager_email = userData?.user?.email;
+
+  const validEmails = filterValidEmails([
+    manager_email,
+    'micronboy632@gmail.com',
+    cordinator_email
+  ]);
+
+  if (validEmails.length === 0) {
+    console.warn('No valid email addresses found for notification');
+    return { data: result };
+  }
+
+  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
 
   const emailContent = {
-    to: [userData.user?.email,'micronboy632@gmail.com',cordinator_email],
+    to: validEmails,
     title: `Equipment Maintenance Status Update: ${data.state}`,
     body: `
       Equipment maintenance status has been updated to: ${data.state}<br/>
@@ -864,12 +884,17 @@ console.log("herrrrrree",updateError)
       View equipment details: <a href="${equipmentUrl}">Click here</a>
     `
   };
-  await updateMaintenanceSchedules()
+
+  await updateMaintenanceSchedules();
   await sendEmail(emailContent);
 
   return { data: result };
 }
+function isValidManagerId(id: string | undefined): id is string {
+  return id !== undefined && id !== '';
+}
 
+// Similar changes for addCalibrationHistory function
 export async function addCalibrationHistory(
   data: Omit<EquipmentHistory, 'history_id' | 'schedule_id'>,  
   lab_id: number,
@@ -899,21 +924,37 @@ console.log('Adding calibration history:iodfshh',updateError)
 
   if (updateError) return { error: updateError };
 
-  const { data:cordinator } = await supabase
-  .rpc('get_lab_matched_users', {
-    p_lab_id: lab_id
-  })
+  const { data: cordinator } = await supabase
+    .rpc('get_lab_matched_users', {
+      p_lab_id: lab_id
+    });
 
-  const lab= getLaboratoryById(lab_id)
-  const { data: userData, error: userError } = await supabase.auth
-  .admin.getUserById((await lab).manager_id);
-  const cordinator_email = cordinator[0].email
   
+  const lab = await getLaboratoryById(lab_id);
+if (!isValidManagerId(lab?.manager_id)) {
+  console.warn('Invalid or missing manager_id');
+  return { error: new Error('Invalid manager_id') };
+}
+  const { data: userData, error: userError } = await supabase.auth
+    .admin.getUserById(lab.manager_id);
+  const cordinator_email = cordinator?.[0]?.email;
+  const manager_email = userData?.user?.email;
+
+  const validEmails = filterValidEmails([
+    manager_email,
+    'micronboy632@gmail.com',
+    cordinator_email
+  ]);
+
+  if (validEmails.length === 0) {
+    console.warn('No valid email addresses found for notification');
+    return { data: result };
+  }
 
   const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
-  
+
   const emailContent = {
-    to: [userData.user?.email,'micronboy632@gmail.com',cordinator_email],
+    to: validEmails,
     title: `Equipment Calibration Status Update: ${data.state}`,
     body: `
       Equipment calibration status has been updated to: ${data.state}<br/>
@@ -923,13 +964,9 @@ console.log('Adding calibration history:iodfshh',updateError)
       View equipment details: <a href="${equipmentUrl}">Click here</a>
     `
   };
-  // console.log('Adding calibration history:iodfshhhhhhhhhhhhhhhhhlzzzzzfhnzz',error,data);
 
-await updateCalibrationSchedules();
-
+  await updateCalibrationSchedules();
   await sendEmail(emailContent);
-  
-console.log("herrrrrree")
 
   return { data: result };
 }

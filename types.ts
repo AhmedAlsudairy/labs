@@ -18,7 +18,7 @@ export interface Laboratory {
   location_city: string;
   location_state: string;
   manager_name: string;
-  manager_id: UUID;
+  manager_id?: string;
   contact_number: string;
   email: string;
   lab_category: "food" | "animal" | "human";
