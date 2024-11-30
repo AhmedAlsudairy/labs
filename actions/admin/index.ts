@@ -84,7 +84,7 @@ export async function updateUserRole(
         labId: metadata.labId 
       });
 
-      // First check if lab exists
+      // First check if lab exists ..
       const { data: labCheck } = await supabase
         .from('laboratory')
         .select('lab_id, manager_id')
