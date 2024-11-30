@@ -1,10 +1,12 @@
-import { addCalibrationHistory, addMaintenanceHistory, getHistoryByCalibrationScheduleId, getHistoryByScheduleId } from "@/actions/admin";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { MaintenanceHistoryForm } from "../forms/maintenance-history-form";
 import { Frequency, EquipmentHistory, MaintenanceEquipmentHistory, CalibrationEquipmentHistory } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { StateIndicator } from "./maintenance-record-row";
+import { getHistoryByCalibrationScheduleId, getHistoryByScheduleId } from "@/actions/admin/index";
+import { Search } from "lucide-react";
+import { DescriptionModal } from "../ui/description-modal";
 
 // Types
 
@@ -21,6 +23,10 @@ interface MaintenanceHistoryTableProps {
 export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, frequency, onRefresh }: MaintenanceHistoryTableProps) {
   const [histories, setHistories] = useState<EquipmentHistory[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [selectedDescription, setSelectedDescription] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchHistories = async () => {
@@ -31,20 +37,6 @@ export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, 
     };
     fetchHistories();
   }, [mode, scheduleId]);
-
-  // const handleSubmit = async (formData: Omit<EquipmentHistory, 'history_id'>) => {
-  //   const addHistory = mode === 'calibration' 
-  //     ? addCalibrationHistory 
-  //     : addMaintenanceHistory;
-
-  //   await addHistory({
-  //     ...formData,
-  //     [mode === 'calibration' ? 'calibration_schedule_id' : 'schedule_id']: scheduleId
-  //   });
-    
-  //   setShowForm(false);
-  //   onRefresh();
-  // };
 
   const isCalibrationHistory = (history: EquipmentHistory): history is CalibrationEquipmentHistory => {
     return 'calibration_results' in history;
@@ -67,8 +59,8 @@ export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, 
 
       {showForm && (
         <MaintenanceHistoryForm
-        equipment_id={equipment_id}
-        lab_id={lab_id}
+          equipment_id={equipment_id}
+          lab_id={lab_id}
           mode={mode}
           scheduleId={scheduleId}
           frequency={frequency}
@@ -96,26 +88,58 @@ export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, 
           {histories.map((history) => (
             <TableRow key={history.history_id}>
               <TableCell>
-      {history.performed_date
-    ? new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-    }).format(new Date(history.performed_date))
-    : "N/A"}
-
+                {history.performed_date
+                  ? new Intl.DateTimeFormat("en-GB", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric"
+                  }).format(new Date(history.performed_date))
+                  : "N/A"}
               </TableCell>
-              {history.state && <StateIndicator state={history.state} />}
-              <TableCell>{history.description}</TableCell>
               <TableCell>
-                {isCalibrationHistory(history) 
-                  ? history.calibration_results 
-                  : history.work_performed}
+                {history.state && <StateIndicator state={history.state} />}
+              </TableCell>
+              <TableCell 
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 group"
+                onClick={() => setSelectedDescription({
+                  title: `${mode === 'calibration' ? 'Calibration' : 'Maintenance'} Description`,
+                  description: history.description
+                })}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="truncate max-w-[200px]">{history.description}</span>
+                  <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </TableCell>
+              <TableCell 
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 group"
+                onClick={() => setSelectedDescription({
+                  title: mode === 'calibration' ? 'Calibration Results' : 'Work Performed',
+                  description: isCalibrationHistory(history) 
+                    ? history.calibration_results 
+                    : history.work_performed
+                })}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="truncate max-w-[200px]">
+                    {isCalibrationHistory(history) 
+                      ? history.calibration_results 
+                      : history.work_performed}
+                  </span>
+                  <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      <DescriptionModal
+        open={!!selectedDescription}
+        onClose={() => setSelectedDescription(null)}
+        title={selectedDescription?.title || ""}
+        description={selectedDescription?.description || ""}
+      />
     </div>
   );
 }

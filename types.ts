@@ -45,6 +45,17 @@ export type Equipment = {
   maintenanceState?: 'done' | 'need maintance' | 'late maintance';
 };
 
+export interface DowntimeRecord {
+  record_id?: number;
+  equipment_id: number;
+  start_date: string;
+  end_date: string;
+  type: string;
+  reason: string;
+  affected_tests: string;
+}
+
+
 // Add a new type for creating equipment
 export type CreateEquipmentInput = Omit<Equipment, 'id'>;
 // CreateLaboratoryParams

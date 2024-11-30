@@ -1,6 +1,6 @@
 'use server';
 
-import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, EquipmentHistory, OmanGovernorate, user_category } from '@/types';
+import { Equipment, EquipmentUsage, MaintenanceRecord, Staff, Laboratory, UserRole, CreateUserParams, CalibrationData, ExternalControl, CreateEquipmentInput, CreateLaboratoryParams, EquipmentHistory, OmanGovernorate, user_category, DowntimeRecord } from '@/types';
 import { sendEmail } from '@/utils/resend/email';
 import { calculateNextDate } from '@/utils/utils';
 import { createClient } from '@supabase/supabase-js';
@@ -837,7 +837,9 @@ export async function addMaintenanceHistory(
     .from('maintenance_schedule')
     .update({ 
       state: data.state,
-      next_date: data.next_maintenance_date 
+      next_date: data.next_maintenance_date, 
+      updated_by: 'manual'
+
     })
     .eq('schedule_id', data.schedule_id);
 
@@ -917,7 +919,9 @@ export async function addCalibrationHistory(
     .from('calibration_schedule')
     .update({ 
       state: data.state,
-      next_date: data.next_calibration_date 
+      next_date: data.next_calibration_date ,
+      updated_by: 'manual'
+
     })
     .eq('calibration_schedule_id', data.calibration_schedule_id);
 console.log('Adding calibration history:iodfshh',updateError)
@@ -1236,4 +1240,50 @@ export async function updateUserLabAssignment(
     console.error('Unexpected error:', error);
     return { error: 'An unexpected error occurred' };
   }
+}
+
+
+
+export async function createDowntimeRecord(data: Omit<DowntimeRecord, 'record_id'>) {
+  const { data: result, error } = await supabase
+    .from('downtime_record')
+    .insert([data])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return result;
+}
+export async function updateDowntimeRecord(record_id: number, data: Partial<DowntimeRecord>) {
+  const { data: result, error } = await supabase
+    .from('downtime_record')
+    .update(data)
+    .match({ record_id })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return result;
+}
+
+export async function deleteDowntimeRecord(record_id: number) {
+  const { error } = await supabase
+    .from('downtime_record')
+    .delete()
+    .match({ record_id });
+
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+
+export async function getDowntimeRecords(equipment_id: number) {
+  const { data, error } = await supabase
+    .from('downtime_record')
+    .select('*')
+    .eq('equipment_id', equipment_id)
+    .order('start_date', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
 }

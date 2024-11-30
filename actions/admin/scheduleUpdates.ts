@@ -12,6 +12,11 @@ type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'qu
 type MaintenanceState = 'done' | 'need maintance' | 'late maintance';
 type CalibrationState = 'calibrated' | 'need calibration' | 'late calibration';
 
+interface ScheduleUpdate {
+  last_updated: Date;
+  updated_by: 'manual' | 'automatic';
+}
+
 function calculateNextDate(currentDate: Date, frequency: Frequency): Date {
   switch (frequency) {
     case 'daily':
@@ -41,7 +46,7 @@ function determineMaintenanceState(nextDate: Date): MaintenanceState {
   
   if (daysDiff < 0) {
     return 'late maintance';
-  } else if (daysDiff <= 0) { // Within a week of next date
+  } else if (daysDiff <= 0) {
     return 'need maintance';
   }
   return 'done';
@@ -53,14 +58,33 @@ function determineCalibrationState(nextDate: Date): CalibrationState {
   
   if (daysDiff < 0) {
     return 'late calibration';
-  } else if (daysDiff <= 0) { // Within a week of next date
+  } else if (daysDiff <= 0) {
     return 'need calibration';
   }
   return 'calibrated';
 }
 
+// Helper function to check if a schedule was recently updated manually
+async function wasRecentlyUpdatedManually(scheduleId: number, type: 'maintenance' | 'calibration'): Promise<boolean> {
+  const table = type === 'maintenance' ? 'maintenance_schedule' : 'calibration_schedule';
+  const idField = type === 'maintenance' ? 'schedule_id' : 'calibration_schedule_id';
+
+  const { data, error } = await supabase
+    .from(table)
+    .select('last_updated, updated_by')
+    .eq(idField, scheduleId)
+    .single();
+
+  if (error || !data) return false;
+
+  // Check if there was a manual update in the last hour
+  const lastUpdate = new Date(data.last_updated);
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  
+  return data.updated_by === 'manual' && lastUpdate > hourAgo;
+}
+
 export async function updateMaintenanceSchedules() {
-  // Get all maintenance schedules with equipment and lab information
   const { data: maintenanceSchedules, error: maintenanceError } = await supabase
     .from('maintenance_schedule')
     .select(`
@@ -79,66 +103,48 @@ export async function updateMaintenanceSchedules() {
     return;
   }
 
-  // Update each maintenance schedule
   for (const schedule of maintenanceSchedules || []) {
-    const nextDate = new Date(schedule.next_date);
-    const state = determineMaintenanceState(nextDate);
-    
-    let newNextDate = schedule.next_date;
-    if (state !== 'done') {
-      newNextDate = calculateNextDate(new Date(), schedule.frequency);
-    }
-
-    const { error: updateError } = await supabase
-      .from('maintenance_schedule')
-      .update({ 
-        state,
-        next_date: newNextDate
-      })
-      .eq('schedule_id', schedule.schedule_id);
-
-    if (updateError) {
-      console.error('Error updating maintenance schedule:', updateError);
+    // Skip if recently updated manually or in need/late maintenance state with manual update
+    if (schedule.updated_by === 'manual' && 
+        (schedule.state === 'need maintance' || schedule.state === 'late maintance')) {
+      console.log(`Skipping maintenance schedule ${schedule.schedule_id} - manually marked as ${schedule.state}`);
       continue;
     }
 
-    // Get user details using admin.getUserById
-    if (state !== 'done' && schedule.equipment?.laboratory?.manager_id) {
-      const { data: userData, error: userError } = await supabase.auth
-        .admin.getUserById(schedule.equipment.laboratory.manager_id);
+    const nextDate = new Date(schedule.next_date);
+    const state = determineMaintenanceState(nextDate);
+    
+    // Only update if state would change to done or if it's an automatic update
+    let newNextDate = schedule.next_date;
+    if (schedule.updated_by !== 'manual' || state === 'done') {
+      if (state === 'done') {
+        newNextDate = calculateNextDate(new Date(), schedule.frequency);
+      }
 
-      if (userError) {
-        console.error('Error fetching user:', userError);
+      const { error: updateError } = await supabase
+        .from('maintenance_schedule')
+        .update({ 
+          state,
+          next_date: newNextDate,
+          last_updated: new Date().toISOString(),
+          updated_by: 'automatic'
+        })
+        .eq('schedule_id', schedule.schedule_id);
+
+      if (updateError) {
+        console.error('Error updating maintenance schedule:', updateError);
         continue;
       }
 
-      const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
-      const { data:cordinator } = await supabase
-      .rpc('get_lab_matched_users', {
-        p_lab_id: schedule.equipment.laboratory.lab_id
-      })
-    
-      const cordinator_email = cordinator[0].email 
-      const emailContent = {
-        to: [cordinator_email,userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-        title: `Equipment Maintenance Schedule Alert: ${state}`,
-        body: `
-          Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
-          Current Status: ${state}<br/>
-          Next maintenance date: ${newNextDate}<br/>
-          Description: ${schedule.description || 'Regular maintenance required'}<br/>
-          <br/>
-          View equipment details: <a href="${equipmentUrl}">Click here</a>
-        `
-      };
-
-      await sendEmail(emailContent);
+      // Send notifications only if state changed
+      if (state !== 'done' && schedule.equipment?.laboratory?.manager_id) {
+        await sendMaintenanceNotification(schedule, state, newNextDate);
+      }
     }
   }
 }
 
 export async function updateCalibrationSchedules() {
-  // Get all calibration schedules with equipment and lab information
   const { data: calibrationSchedules, error: calibrationError } = await supabase
     .from('calibration_schedule')
     .select(`
@@ -157,65 +163,105 @@ export async function updateCalibrationSchedules() {
     return;
   }
 
-  // Update each calibration schedule
   for (const schedule of calibrationSchedules || []) {
-    const nextDate = new Date(schedule.next_date);
-    const state = determineCalibrationState(nextDate);
-    
-    let newNextDate = schedule.next_date;
-    if (state !== 'calibrated') {
-      newNextDate = calculateNextDate(new Date(), schedule.frequency);
-    }
-
-    const { error: updateError } = await supabase
-      .from('calibration_schedule')
-      .update({ 
-        state,
-        next_date: newNextDate
-      })
-      .eq('calibration_schedule_id', schedule.calibration_schedule_id);
-
-    if (updateError) {
-      console.error('Error updating calibration schedule:', updateError);
+    // Skip if recently updated manually or in need/late calibration state with manual update
+    if (schedule.updated_by === 'manual' && 
+        (schedule.state === 'need calibration' || schedule.state === 'late calibration')) {
+      console.log(`Skipping calibration schedule ${schedule.calibration_schedule_id} - manually marked as ${schedule.state}`);
       continue;
     }
 
-    // Get user details using admin.getUserById
-    if (state !== 'calibrated' && schedule.equipment?.laboratory?.manager_id) {
-      const { data: userData, error: userError } = await supabase.auth
-        .admin.getUserById(schedule.equipment.laboratory.manager_id);
+    const nextDate = new Date(schedule.next_date);
+    const state = determineCalibrationState(nextDate);
+    
+    // Only update if state would change to calibrated or if it's an automatic update
+    let newNextDate = schedule.next_date;
+    if (schedule.updated_by !== 'manual' || state === 'calibrated') {
+      if (state === 'calibrated') {
+        newNextDate = calculateNextDate(new Date(), schedule.frequency);
+      }
 
-      if (userError) {
-        console.error('Error fetching user:', userError);
+      const { error: updateError } = await supabase
+        .from('calibration_schedule')
+        .update({ 
+          state,
+          next_date: newNextDate,
+          last_updated: new Date().toISOString(),
+          updated_by: 'automatic'
+        })
+        .eq('calibration_schedule_id', schedule.calibration_schedule_id);
+
+      if (updateError) {
+        console.error('Error updating calibration schedule:', updateError);
         continue;
       }
-      const { data:cordinator } = await supabase
-      .rpc('get_lab_matched_users', {
-        p_lab_id: schedule.equipment.laboratory.lab_id
-      })
-    
-      const cordinator_email = cordinator[0].email  
-      const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
-      
-      const emailContent = {
-        to: [cordinator_email,userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-        title: `Equipment Calibration Schedule Alert: ${state}`,
-        body: `
-          Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
-          Current Status: ${state}<br/>
-          Next calibration date: ${newNextDate}<br/>
-          Description: ${schedule.description || 'Regular calibration required'}<br/>
-          <br/>
-          View equipment details: <a href="${equipmentUrl}">Click here</a>
-        `
-      };
 
-      await sendEmail(emailContent);
+      // Send notifications only if state changed
+      if (state !== 'calibrated' && schedule.equipment?.laboratory?.manager_id) {
+        await sendCalibrationNotification(schedule, state, newNextDate);
+      }
     }
   }
 }
 
-// Function to update both maintenance and calibration schedules
+// Helper function for maintenance notifications
+async function sendMaintenanceNotification(schedule: any, state: MaintenanceState, newNextDate: Date) {
+  const { data: userData } = await supabase.auth
+    .admin.getUserById(schedule.equipment.laboratory.manager_id);
+
+  const { data: cordinator } = await supabase
+    .rpc('get_lab_matched_users', {
+      p_lab_id: schedule.equipment.laboratory.lab_id
+    });
+
+  const cordinator_email = cordinator?.[0]?.email;
+  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
+  
+  const emailContent = {
+    to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+    title: `Equipment Maintenance Schedule Alert: ${state}`,
+    body: `
+      Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+      Current Status: ${state}<br/>
+      Next maintenance date: ${newNextDate}<br/>
+      Description: ${schedule.description || 'Regular maintenance required'}<br/>
+      <br/>
+      View equipment details: <a href="${equipmentUrl}">Click here</a>
+    `
+  };
+
+  await sendEmail(emailContent);
+}
+
+// Helper function for calibration notifications
+async function sendCalibrationNotification(schedule: any, state: CalibrationState, newNextDate: Date) {
+  const { data: userData } = await supabase.auth
+    .admin.getUserById(schedule.equipment.laboratory.manager_id);
+
+  const { data: cordinator } = await supabase
+    .rpc('get_lab_matched_users', {
+      p_lab_id: schedule.equipment.laboratory.lab_id
+    });
+
+  const cordinator_email = cordinator?.[0]?.email;
+  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
+  
+  const emailContent = {
+    to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+    title: `Equipment Calibration Schedule Alert: ${state}`,
+    body: `
+      Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+      Current Status: ${state}<br/>
+      Next calibration date: ${newNextDate}<br/>
+      Description: ${schedule.description || 'Regular calibration required'}<br/>
+      <br/>
+      View equipment details: <a href="${equipmentUrl}">Click here</a>
+    `
+  };
+
+  await sendEmail(emailContent);
+}
+
 export async function updateAllSchedules() {
   await Promise.all([
     updateMaintenanceSchedules(),

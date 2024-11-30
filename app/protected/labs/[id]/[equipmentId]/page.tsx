@@ -13,17 +13,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  getEquipmentById,
-  getMaintenanceRecords,
-  getExternalControls,
-  getCalibrationRecords,
-  deleteMaintenanceRecord,
-  deleteCalibrationRecord,
-} from "@/actions/admin";
+
 import {
   Equipment,
   MaintenanceRecord,
@@ -33,10 +25,13 @@ import {
 } from "@/types";
 import { useTheme } from "next-themes";
 import { formatDeviceAge } from "@/utils/utils";
+import { differenceInDays } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
 
 import { MaintenanceRecords } from "@/components/tables/maintanance-record-table";
+import { deleteCalibrationRecord, deleteMaintenanceRecord, getCalibrationRecords, getEquipmentById, getExternalControls, getMaintenanceRecords, getDowntimeRecords, deleteDowntimeRecord } from "@/actions/admin/index";
+import { DowntimeRecords } from "@/components/tables/downtime-record-table";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -57,13 +52,12 @@ export default function EquipmentPage() {
   const { theme } = useTheme();
 
   const [equipment, setEquipment] = useState<Equipment | null>(null);
-  const [maintenanceRecords, setMaintenanceRecords] = useState<
-    MaintenanceRecord[]
-  >([]);
-  const [externalControls, setExternalControls] = useState<ExternalControl[]>(
+  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(
     []
   );
+  const [externalControls, setExternalControls] = useState<ExternalControl[]>([]);
   const [calibrationData, setCalibrationData] = useState<CalibrationData[]>([]);
+  const [downtimeRecords, setDowntimeRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
@@ -74,19 +68,26 @@ export default function EquipmentPage() {
     for (let i = 0; i < retries; i++) {
       try {
         console.log(`Attempting to fetch data (attempt ${i + 1})`);
-        const [equipmentData, maintenanceData, controlData, calibrationData] =
-          await Promise.all([
-            getEquipmentById(equipmentId),
-            getMaintenanceRecords(equipmentId),
-            getExternalControls(equipmentId),
-            getCalibrationRecords(equipmentId),
-          ]);
+        const [
+          equipmentData,
+          maintenanceData,
+          controlData,
+          calibrationData,
+          downtimeData,
+        ] = await Promise.all([
+          getEquipmentById(equipmentId),
+          getMaintenanceRecords(equipmentId),
+          getExternalControls(equipmentId),
+          getCalibrationRecords(equipmentId),
+          getDowntimeRecords(equipmentId),
+        ]);
 
         console.log("Fetched equipment data:", equipmentData);
         setEquipment(equipmentData);
         setMaintenanceRecords(maintenanceData);
         setExternalControls(controlData);
         setCalibrationData(calibrationData);
+        setDowntimeRecords(downtimeData);
         return;
       } catch (error) {
         console.error(`Error fetching data (attempt ${i + 1}):`, error);
@@ -101,6 +102,7 @@ export default function EquipmentPage() {
         await deleteMaintenanceRecord(id);
       } else {
         await deleteCalibrationRecord(id);
+
       }
       fetchDataWithRetry();
     } catch (error) {
@@ -149,6 +151,17 @@ export default function EquipmentPage() {
     );
   }
 
+  const calculateTotalDowntime = () => {
+    return downtimeRecords.reduce((total, record) => {
+      const startDate = new Date(record.start_date);
+      const endDate = new Date(record.end_date);
+      const downtimeDays = differenceInDays(endDate, startDate) + 1;
+      return total + downtimeDays;
+    }, 0);
+  };
+
+  const totalDowntimeDays = calculateTotalDowntime();
+
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="container mx-auto p-4 lg:p-8 max-w-7xl dark:bg-gray-900 dark:text-white transition-colors duration-200">
@@ -191,6 +204,10 @@ export default function EquipmentPage() {
                         )
                       : "N/A"
                   }
+                />
+                <InfoItem
+                  label="Total Downtime"
+                  value={`${totalDowntimeDays} ${totalDowntimeDays === 1 ? 'day' : 'days'}`}
                 />
               </div>
               <p className="mt-4">
@@ -261,11 +278,17 @@ export default function EquipmentPage() {
             >
               External Controls
             </TabsTrigger>
+            <TabsTrigger
+              value="downtime"
+              className="px-6 py-2 dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
+            >
+              Down-time Records
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="maintenance">
             <MaintenanceRecords
-            lab_id={labId}
+              lab_id={labId}
               mode="maintenance"
               records={maintenanceRecords}
               equipmentId={equipmentId}
@@ -313,11 +336,28 @@ export default function EquipmentPage() {
 
           <TabsContent value="calibration">
             <MaintenanceRecords
-            lab_id={labId}
+              lab_id={labId}
               mode="calibration"
               records={calibrationData}
               equipmentId={equipmentId}
               onDelete={(id) => handleDelete(id, 'calibration')}
+              onSuccess={fetchDataWithRetry}
+            />
+          </TabsContent>
+
+          <TabsContent value="downtime">
+            <DowntimeRecords
+              lab_id={labId}
+              records={downtimeRecords}
+              equipmentId={equipmentId}
+              onDelete={async (id) => {
+                try {
+                  await deleteDowntimeRecord(id);
+                  fetchDataWithRetry();
+                } catch (error) {
+                  console.error('Failed to delete downtime record:', error);
+                }
+              }}
               onSuccess={fetchDataWithRetry}
             />
           </TabsContent>
