@@ -41,7 +41,7 @@ function determineMaintenanceState(nextDate: Date): MaintenanceState {
   
   if (daysDiff < 0) {
     return 'late maintance';
-  } else if (daysDiff <= 7) { // Within a week of next date
+  } else if (daysDiff <= 0) { // Within a week of next date
     return 'need maintance';
   }
   return 'done';
@@ -53,7 +53,7 @@ function determineCalibrationState(nextDate: Date): CalibrationState {
   
   if (daysDiff < 0) {
     return 'late calibration';
-  } else if (daysDiff <= 7) { // Within a week of next date
+  } else if (daysDiff <= 0) { // Within a week of next date
     return 'need calibration';
   }
   return 'calibrated';
@@ -113,9 +113,14 @@ export async function updateMaintenanceSchedules() {
       }
 
       const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
-      
+      const { data:cordinator } = await supabase
+      .rpc('get_lab_matched_users', {
+        p_lab_id: schedule.equipment.laboratory.lab_id
+      })
+    
+      const cordinator_email = cordinator[0].email 
       const emailContent = {
-        to: [userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+        to: [cordinator_email,userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
         title: `Equipment Maintenance Schedule Alert: ${state}`,
         body: `
           Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
@@ -162,13 +167,14 @@ export async function updateCalibrationSchedules() {
       newNextDate = calculateNextDate(new Date(), schedule.frequency);
     }
 
+    console.log('nextDate:',  schedule.calibration_schedule_id);
     const { error: updateError } = await supabase
       .from('calibration_schedule')
       .update({ 
         state,
         next_date: newNextDate
       })
-      .eq('schedule_id', schedule.schedule_id);
+      .eq('calibration_schedule_id', schedule.calibration_schedule_id);
 
     if (updateError) {
       console.error('Error updating calibration schedule:', updateError);
@@ -184,11 +190,16 @@ export async function updateCalibrationSchedules() {
         console.error('Error fetching user:', userError);
         continue;
       }
-
+      const { data:cordinator } = await supabase
+      .rpc('get_lab_matched_users', {
+        p_lab_id: schedule.equipment.laboratory.lab_id
+      })
+    
+      const cordinator_email = cordinator[0].email  
       const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
       
       const emailContent = {
-        to: [userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+        to: [cordinator_email,userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
         title: `Equipment Calibration Schedule Alert: ${state}`,
         body: `
           Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>

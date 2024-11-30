@@ -60,7 +60,7 @@ const calibrationSchema = z.object({
   next_calibration_date: z.date(),
 });
 
-// First define the base types
+// Base history type without schedule IDs
 type BaseHistory = {
   performed_date: Date;
   completed_date: Date;
@@ -69,17 +69,21 @@ type BaseHistory = {
   technician_notes: string;
 };
 
+// Maintenance history type with schedule_id
 type MaintenanceData = BaseHistory & {
   work_performed: string;
   parts_used: string;
   next_maintenance_date: Date;
   schedule_id: number;
+  calibration_schedule_id?: never; // Ensure this is never set for maintenance
 };
 
+// Calibration history type with calibration_schedule_id
 type CalibrationData = BaseHistory & {
   calibration_results: string;
   next_calibration_date: Date;
   calibration_schedule_id: number;
+  schedule_id?: never; // Ensure this is never set for calibration
 };
 
 export function MaintenanceHistoryForm({ 
@@ -134,7 +138,12 @@ export function MaintenanceHistoryForm({
           work_performed: (values as MaintenanceData).work_performed || '',
           parts_used: (values as MaintenanceData).parts_used || '',
         };
-        await addMaintenanceHistory(maintenanceData,lab_id,equipment_id);
+        console.log('Submitting maintenance data:', {
+          data: maintenanceData,
+          lab_id,
+          equipment_id
+        });
+        await addMaintenanceHistory(maintenanceData, lab_id, equipment_id);
       } else {
         const calibrationData: CalibrationData = {
           ...values,
@@ -142,9 +151,18 @@ export function MaintenanceHistoryForm({
           next_calibration_date: new Date(nextDate),
           calibration_results: (values as CalibrationData).calibration_results || '',
         };
-        await addCalibrationHistory(calibrationData,lab_id,equipment_id);
+        console.log('Submitting calibration data:', {
+          data: calibrationData,
+          lab_id,
+          equipment_id,
+          scheduleId,
+          frequency,
+          values
+        });
+        await addCalibrationHistory(calibrationData, lab_id, equipment_id);
       }
 
+      console.log('Form submission successful');
       form.reset();
       onSuccess();
     } catch (error) {

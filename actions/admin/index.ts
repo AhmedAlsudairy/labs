@@ -6,6 +6,7 @@ import { calculateNextDate } from '@/utils/utils';
 import { createClient } from '@supabase/supabase-js';
 import { Result } from 'postcss';
 import { updateCalibrationSchedules, updateMaintenanceSchedules } from './scheduleUpdates';
+import { CloudCog } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -840,9 +841,20 @@ console.log("herrrrrree",updateError)
 
   // Send email notification
   const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
+ 
+  const { data:cordinator } = await supabase
+  .rpc('get_lab_matched_users', {
+    p_lab_id: lab_id
+  })
+
+  const lab= getLaboratoryById(lab_id)
+  const { data: userData, error: userError } = await supabase.auth
+  .admin.getUserById((await lab).manager_id);
+  const cordinator_email = cordinator[0].email
   
+
   const emailContent = {
-    to: ['micronboy632@gmail.com'],
+    to: [userData.user?.email,'micronboy632@gmail.com',cordinator_email],
     title: `Equipment Maintenance Status Update: ${data.state}`,
     body: `
       Equipment maintenance status has been updated to: ${data.state}<br/>
@@ -858,36 +870,50 @@ console.log("herrrrrree",updateError)
   return { data: result };
 }
 
-// Add history for calibration schedule
 export async function addCalibrationHistory(
   data: Omit<EquipmentHistory, 'history_id' | 'schedule_id'>,  
   lab_id: number,
   equipment_id: number
 ) {
+
+  // Insert history record
   const { data: result, error } = await supabase
     .from('equipment_history')
-    .insert([{ ...data }])
+    .insert([{ 
+      ...data,
+      
+    }])
     .select()
     .single();
 
   if (error) return { error };
-  
   // Update schedule
   const { error: updateError } = await supabase
     .from('calibration_schedule')
     .update({ 
       state: data.state,
-      next_date: data.next_maintenance_date 
+      next_date: data.next_calibration_date 
     })
     .eq('calibration_schedule_id', data.calibration_schedule_id);
+console.log('Adding calibration history:iodfshh',updateError)
 
   if (updateError) return { error: updateError };
 
-  // Send email notification
+  const { data:cordinator } = await supabase
+  .rpc('get_lab_matched_users', {
+    p_lab_id: lab_id
+  })
+
+  const lab= getLaboratoryById(lab_id)
+  const { data: userData, error: userError } = await supabase.auth
+  .admin.getUserById((await lab).manager_id);
+  const cordinator_email = cordinator[0].email
+  
+
   const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
   
   const emailContent = {
-    to: ['micronboy632@gmail.com'],
+    to: [userData.user?.email,'micronboy632@gmail.com',cordinator_email],
     title: `Equipment Calibration Status Update: ${data.state}`,
     body: `
       Equipment calibration status has been updated to: ${data.state}<br/>
@@ -897,10 +923,13 @@ export async function addCalibrationHistory(
       View equipment details: <a href="${equipmentUrl}">Click here</a>
     `
   };
+  // console.log('Adding calibration history:iodfshhhhhhhhhhhhhhhhhlzzzzzfhnzz',error,data);
+
 await updateCalibrationSchedules();
 
   await sendEmail(emailContent);
   
+console.log("herrrrrree")
 
   return { data: result };
 }
@@ -915,6 +944,72 @@ export async function getHistoryByScheduleId(scheduleId: number) {
   if (error) return { error };
   return { data };
 }
+
+// export async function addCalibrationHistory(
+//   data: Omit<EquipmentHistory, 'history_id' | 'schedule_id'>,  
+//   lab_id: number,
+//   equipment_id: number
+// ) {
+//   console.log('=== Starting addCalibrationHistory ===');
+//   console.log('Input data:', { data, lab_id, equipment_id });
+
+//   // Insert history record
+//   const { data: result, error } = await supabase
+//     .from('equipment_history')
+//     .insert([{ 
+//       ...data,
+//     }])
+//     .select()
+//     .single();
+  
+//   console.log('Insert history result:', { result, error });
+
+//   if (error) {
+//     console.error('Failed to insert equipment history:', error);
+//     return { error };
+//   }
+
+//   // Update schedule
+//   const updateData = { 
+//     state: data.state,
+//     next_date: data.next_calibration_date 
+//   };
+//   console.log('Updating calibration schedule with:', updateData);
+  
+//   const { error: updateError } = await supabase
+//     .from('calibration_schedule')
+//     .update(updateData)
+//     .eq('calibration_schedule_id', data.calibration_schedule_id);
+
+//   if (updateError) {
+//     console.error('Failed to update calibration schedule:', updateError);
+//     return { error: updateError };
+//   }
+
+//   const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
+  
+//   const emailContent = {
+//     to: ['micronboy632@gmail.com'],
+//     title: `Equipment Calibration Status Update: ${data.state}`,
+//     body: `
+//       Equipment calibration status has been updated to: ${data.state}<br/>
+//       Description: ${data.description}<br/>
+//       Next calibration date: ${data.next_maintenance_date}<br/>
+//       <br/>
+//       View equipment details: <a href="${equipmentUrl}">Click here</a>
+//     `
+//   };
+
+//   try {
+//     await sendEmail(emailContent);
+//     console.log('Email notification sent successfully');
+//   } catch (emailError) {
+//     console.error('Failed to send email notification:', emailError);
+//   }
+
+//   console.log('=== Completed addCalibrationHistory successfully ===');
+//   return { data: result };
+// }
 
 // Get history by calibration schedule
 export async function getHistoryByCalibrationScheduleId(calibrationScheduleId: number) {

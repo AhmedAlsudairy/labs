@@ -1,3 +1,5 @@
+import { UUID } from "crypto";
+
 export type UserRole = 'admin' | 'cordinator' | 'lab in charge' | 'maintance staff';
 export type User = {
   id: string;
@@ -16,6 +18,7 @@ export interface Laboratory {
   location_city: string;
   location_state: string;
   manager_name: string;
+  manager_id: UUID;
   contact_number: string;
   email: string;
   lab_category: "food" | "animal" | "human";
