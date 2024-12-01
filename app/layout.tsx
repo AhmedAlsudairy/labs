@@ -37,15 +37,19 @@ export default function RootLayout({
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                 <div className="w-full max-w-[2000px] flex justify-between items-center p-3 px-4">
                   <div className="flex gap-4 items-center font-semibold">
-                    <Link href={"/"}>Next.js Supabase Starter</Link>
+                    <Link href="/">Next.js Supabase Starter</Link>
                     <div className="flex items-center gap-2">
                       <DeployButton />
                     </div>
                   </div>
-                  {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
+                  {!hasEnvVars ? (
+                    <EnvVarWarning />
+                  ) : (
+                    <HeaderAuth />
+                  )}
                 </div>
               </nav>
-              
+
               <div className="flex-1 w-full max-w-[2000px] mx-auto px-3 sm:px-4 py-4 sm:py-6">
                 {children}
               </div>

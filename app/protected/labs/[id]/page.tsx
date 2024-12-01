@@ -3,16 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  getLaboratoryById,
-  getEquipmentUsage,
-  getMaintenanceRecords,
-  getStaff,
-  addEquipment,
-  updateEquipment,
-  deleteEquipment,
-  addMaintenanceRecord,
-} from "@/actions/admin";
+
 import { toast } from "@/hooks/use-toast";
 import {
   CreateEquipmentInput,
@@ -34,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IdCard } from "lucide-react";
+import { addEquipment, addMaintenanceRecord, deleteEquipment, getEquipmentUsage, getLaboratoryById, getMaintenanceRecords, getStaff, updateEquipment } from "@/actions/admin/index";
 
 type FullLaboratoryDetails = Laboratory & {
   equipment: Equipment[];
