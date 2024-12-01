@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { createUser, getLaboratories } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
 import { UserRole, Laboratory, user_category } from "@/types"
+import { getLaboratories } from "@/actions/admin/lab"
+import { createUser } from "@/actions/admin/user"
 
 // Oman governorates list
 const omanGovernorates = [

@@ -2,7 +2,6 @@
 'use client'
 import React, { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-import { getLaboratories, getUsers,  } from "@/actions/admin"
 import { User, Laboratory, UserRole } from "@/types"
 import CreateUserForm from "@/components/forms/form-user"
 import LaboratoriesTable from "@/components/tables/lab-table"
@@ -10,6 +9,8 @@ import LaboratoriesByStateChart from "@/components/charts/lab-chart-reg"
 import UsersTable from "@/components/tables/user-table"
 import UserRolesChart from "@/components/charts/user-role-chart"
 import CreateLabForm from "@/components/forms/form-lab-create"
+import { getUsers } from "@/actions/admin/user"
+import { getLaboratories } from "@/actions/admin/lab"
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([])

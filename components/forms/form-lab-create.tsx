@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createLaboratory } from "@/actions/admin";
 import { toast } from "@/hooks/use-toast";
 import { OmanGovernorate, CreateLaboratoryParams } from "@/types";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -31,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createLaboratory } from "@/actions/admin/lab";
 
 // Add lab categories constant
 const labCategories = [

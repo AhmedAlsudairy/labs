@@ -20,7 +20,9 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { Badge } from "@/components/ui/badge";
 import { Building2, Users, Cog, WrenchIcon } from "lucide-react";
-import { getEquipmentStatusByGovernorate, getUsersByLaboratories, updateUserLabAssignment } from "@/actions/admin/index";
+import { getUsersByLaboratories } from "@/actions/admin/user";
+import { getEquipmentStatusByGovernorate } from "@/actions/admin/equipments";
+import { updateUserLabAssignment } from "@/actions/admin/lab";
 
 const LoadingSkeleton = () => (
   <div className="space-y-4">

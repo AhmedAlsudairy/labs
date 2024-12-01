@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Laboratory } from "@/types"
-import { deleteLaboratory } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
 import EditLabForm from "../forms/form-lab-edit"
 import Link from "next/link"
+import { deleteLaboratory } from "@/actions/admin/lab"
 
 interface LaboratoriesTableProps {
   laboratories: Laboratory[];

@@ -1,4 +1,4 @@
-import { getLaboratoryUserId } from "@/actions/admin";
+import { getLaboratoryUserId } from "@/actions/admin/lab";
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 

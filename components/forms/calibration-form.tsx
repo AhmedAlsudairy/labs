@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Frequency } from "@/types"
-import { addCalibrationRecord } from "@/actions/admin"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -26,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { DatePicker } from "../ui/date-picker"
+import { addCalibrationRecord } from "@/actions/admin/calibration"
 
 const frequencies: Frequency[] = [
   'daily',

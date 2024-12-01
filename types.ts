@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 
-export type UserRole = 'admin' | 'cordinator' | 'lab in charge' | 'maintance staff';
+export type UserRole = 'admin' | 'cordinator' | 'lab in charge' | 'maintance staff'| 'lab technician';
 export type User = {
   id: string;
   name: string;

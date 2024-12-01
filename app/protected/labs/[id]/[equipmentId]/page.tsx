@@ -30,8 +30,12 @@ import { differenceInDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
 import { MaintenanceRecords } from "@/components/tables/maintanance-record-table";
-import { deleteCalibrationRecord, deleteMaintenanceRecord, getCalibrationRecords, getEquipmentById, getExternalControls, getMaintenanceRecords, getDowntimeRecords, deleteDowntimeRecord } from "@/actions/admin/index";
 import { DowntimeRecords } from "@/components/tables/downtime-record-table";
+import { getEquipmentById } from "@/actions/admin/equipments";
+import { deleteMaintenanceRecord, getMaintenanceRecords } from "@/actions/admin/maintenance-record";
+import { getExternalControls } from "@/actions/admin/index";
+import { deleteCalibrationRecord, getCalibrationRecords } from "@/actions/admin/calibration";
+import { deleteDowntimeRecord, getDowntimeRecords } from "@/actions/admin/down-time";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (

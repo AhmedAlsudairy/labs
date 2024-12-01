@@ -25,7 +25,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IdCard } from "lucide-react";
-import { addEquipment, addMaintenanceRecord, deleteEquipment, getEquipmentUsage, getLaboratoryById, getMaintenanceRecords, getStaff, updateEquipment } from "@/actions/admin/index";
+import { getLaboratoryById } from "@/actions/admin/lab";
+import { addEquipment, deleteEquipment, getEquipmentUsage, updateEquipment } from "@/actions/admin/equipments";
+import { addMaintenanceRecord, getMaintenanceRecords } from "@/actions/admin/maintenance-record";
+import { getStaff } from "@/actions/admin/user";
 
 type FullLaboratoryDetails = Laboratory & {
   equipment: Equipment[];

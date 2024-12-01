@@ -4,9 +4,9 @@ import { MaintenanceHistoryForm } from "../forms/maintenance-history-form";
 import { Frequency, EquipmentHistory, MaintenanceEquipmentHistory, CalibrationEquipmentHistory } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { StateIndicator } from "./maintenance-record-row";
-import { getHistoryByCalibrationScheduleId, getHistoryByScheduleId } from "@/actions/admin/index";
 import { Search } from "lucide-react";
 import { DescriptionModal } from "../ui/description-modal";
+import { getHistoryByCalibrationScheduleId, getHistoryByScheduleId } from "@/actions/admin/history";
 
 // Types
 

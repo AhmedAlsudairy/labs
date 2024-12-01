@@ -21,9 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addCalibrationHistory, addMaintenanceHistory } from "@/actions/admin";
 import { calculateNextDate } from "@/utils/utils";
 import { Frequency } from "@/types";
+import { addCalibrationHistory, addMaintenanceHistory } from "@/actions/admin/history";
 
 interface MaintenanceHistoryFormProps {
   equipment_id: number;

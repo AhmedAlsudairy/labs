@@ -1,3 +1,5 @@
+'use server';
+
 import { createClient } from '@supabase/supabase-js';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import { sendEmail } from '@/utils/resend/email';

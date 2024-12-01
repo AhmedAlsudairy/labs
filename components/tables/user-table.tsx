@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, UserRole, Laboratory, user_category } from "@/types"
-import { updateUserRole, deleteUser, getLaboratories } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
+import { getLaboratories } from "@/actions/admin/lab"
+import { deleteUser, updateUserRole } from "@/actions/admin/user"
 
 // Oman governorates list
 const omanGovernorates = [

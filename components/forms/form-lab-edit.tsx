@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { updateLaboratory, getLaboratoryById } from "@/actions/admin"
 import { toast } from "@/hooks/use-toast"
 import { CreateLaboratoryParams, Laboratory, OmanGovernorate } from "@/types" // Make sure to import Laboratory type
+import { getLaboratoryById, updateLaboratory } from "@/actions/admin/lab"
 
 interface EditLabFormProps {
   labId: number;
