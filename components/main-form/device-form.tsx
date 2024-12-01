@@ -72,7 +72,7 @@ export default function DeviceMaintenanceForm({
       lab_section: initialData?.labSection || "",
       manufacturer: initialData?.manufacturer || "",
       supplier: initialData?.supplier || "",
-      istherecotntrol: false,
+      istherecotntrol: initialData?.istherecotntrol || false,
       // frequency: "",
       // next_date: new Date(),
       manufacture_date: initialData?.manufactureDate ? new Date(initialData.manufactureDate) : null,

@@ -27,7 +27,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface EquipmentSectionProps {
   labId: number;

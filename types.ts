@@ -41,6 +41,7 @@ export type Equipment = {
   receiptDate: string;
   supplier: string;
   type: string;
+  istherecotntrol?:boolean;
   calibrationState?: 'calibrated' | 'need calibration' | 'late calibration' |'none';
   maintenanceState?: 'done' | 'need maintance' | 'late maintance';
 };

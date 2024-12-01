@@ -257,6 +257,53 @@ export default function LaboratoryPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold">
+          Welcome, {labData.manager_name}
+        </h1>
+        <h2 className="text-xl text-muted-foreground">
+          {labData.location_city} coordinator - {labData.name} Labs
+        </h2>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <Card className="bg-white/50 dark:bg-gray-900/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Labs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">1</div>
+            <p className="text-xs text-muted-foreground">
+              Active laboratories under management
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-white/50 dark:bg-gray-900/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Staff Members</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{labData.staff.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Active laboratory staff members
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-white/50 dark:bg-gray-900/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Equipment Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{labData.equipment.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Total equipment under supervision
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -342,7 +342,7 @@ export async function addEquipment(labId: number, equipmentData: CreateEquipment
       manufacture_date: equipmentData.manufactureDate,
       receipt_date: equipmentData.receiptDate,
       supplier: equipmentData.supplier,
-      istherecotntrol: false, // Add default value or make it part of CreateEquipmentInput
+      istherecotntrol: equipmentData.istherecotntrol, // Add default value or make it part of CreateEquipmentInput
     })
     .select()
     .single();
@@ -1286,4 +1286,35 @@ export async function getDowntimeRecords(equipment_id: number) {
 
   if (error) throw new Error(error.message);
   return data;
+}
+export async function getEquipmentStatusByGovernorate(
+  state: OmanGovernorate,
+  lab_category: 'food' | 'animal' | 'human'
+) {
+  try {
+    const { data: labs } = await supabase
+      .from('laboratory')
+      .select('lab_id')
+      .eq('location_state', state)
+      .eq('lab_category', lab_category);
+
+    if (!labs?.length) return { operational: 0, outOfService: 0 };
+
+    const labIds = labs.map(lab => lab.lab_id);
+
+    const { data: devices } = await supabase
+      .from('device')
+      .select('status, equipment!inner(lab_id)')
+      .in('equipment.lab_id', labIds);
+
+    if (!devices) return { operational: 0, outOfService: 0 };
+
+    const operational = devices.filter(d => d.status === 'Operational').length;
+    const outOfService = devices.filter(d => d.status === 'Out of Service').length;
+
+    return { operational, outOfService };
+  } catch (error) {
+    console.error('Error:', error);
+    return { operational: 0, outOfService: 0 };
+  }
 }
