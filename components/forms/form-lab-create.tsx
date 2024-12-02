@@ -1,5 +1,5 @@
 // File: app/protected/admin/components/CreateLabForm.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createLaboratory } from "@/actions/admin/lab";
+import { listUsers } from "@/actions/admin/user";
 
 // Add lab categories constant
 const labCategories = [
@@ -38,6 +39,7 @@ const labCategories = [
   { value: "animal", label: "Animal" },
   { value: "food", label: "Food" },
 ];
+
 interface CreateLabFormProps {
   onLabCreated: () => void;
 }
@@ -45,33 +47,64 @@ interface CreateLabFormProps {
 export default function CreateLabForm({ onLabCreated }: CreateLabFormProps) {
   const [lab, setLab] = useState<CreateLaboratoryParams>({
     name: "",
-    location_state: OmanGovernorate.MUSCAT, // Using enum value
+    location_state: OmanGovernorate.MUSCAT,
     location_city: "",
     manager_name: "",
     contact_number: "",
     email: "",
     lab_category: "human",
+    technician_lab_id: undefined,
+    maintenance_staff_id: undefined,
+    manager_id: undefined,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [availableStaff, setAvailableStaff] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const users = await listUsers();
+        setAvailableStaff(users);
+      } catch (error) {
+        console.error("Error fetching staff:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch staff members",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchStaff();
+  }, []);
 
   const handleCreateLab = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await createLaboratory(lab);
+      // Convert empty string IDs to undefined to match type
+      const labData = {
+        ...lab,
+        technician_lab_id: lab.technician_lab_id || undefined,
+        maintenance_staff_id: lab.maintenance_staff_id || undefined,
+        manager_id: lab.manager_id || undefined,
+      };
+      await createLaboratory(labData);
       toast({
         title: "Success",
         description: "Laboratory created successfully",
       });
       setLab({
         name: "",
-        location_state: OmanGovernorate.MUSCAT, // Using enum value
+        location_state: OmanGovernorate.MUSCAT,
         location_city: "",
         manager_name: "",
         contact_number: "",
         email: "",
         lab_category: "human",
+        technician_lab_id: undefined,
+        maintenance_staff_id: undefined,
+        manager_id: undefined,
       });
       onLabCreated();
     } catch (error) {
@@ -91,6 +124,37 @@ export default function CreateLabForm({ onLabCreated }: CreateLabFormProps) {
     setLab((prev) => ({ ...prev, [name]: value }));
   };
 
+  const getStaffByRole = (role: string) => {
+    return availableStaff.filter((user) =>
+      user.user_metadata?.role === role
+    );
+  };
+
+  const handleStaffSelect = (
+    value: string,
+    type: "technician" | "maintenance" | "manager"
+  ) => {
+    if (type === "manager") {
+      const selectedManager = getStaffByRole('lab in charge').find(
+        (user) => user.id === value
+      );
+      if (selectedManager) {
+        setLab((prev) => ({
+          ...prev,
+          manager_name: selectedManager.user_metadata?.name || "",
+          email: selectedManager.email || "",
+          manager_id: selectedManager.id,
+        }));
+      }
+    } else {
+      setLab((prev) => ({
+        ...prev,
+        [type === "technician" ? "technician_lab_id" : "maintenance_staff_id"]:
+          value === "none" ? undefined : value,
+      }));
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -98,142 +162,164 @@ export default function CreateLabForm({ onLabCreated }: CreateLabFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleCreateLab} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Laboratory Name</Label>
-            <Input
-              id="name"
-              name="name"
-              value={lab.name}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="location_state">State</Label>
-            <Select
-              value={lab.location_state}
-              onValueChange={(value: OmanGovernorate) =>
-                setLab((prev) => ({ ...prev, location_state: value }))
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select governorate" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Governorates</SelectLabel>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Laboratory Name</Label>
+              <Input 
+                id="name" 
+                name="name"
+                value={lab.name} 
+                onChange={handleInputChange} 
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lab_category">Laboratory Category</Label>
+              <Select
+                value={lab.lab_category}
+                onValueChange={(value: "food" | "animal" | "human") =>
+                  setLab((prev) => ({ ...prev, lab_category: value }))
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="animal">Animal</SelectItem>
+                  <SelectItem value="human">Human</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="location_state">State</Label>
+              <Select
+                value={lab.location_state}
+                onValueChange={(value: OmanGovernorate) =>
+                  setLab((prev) => ({ ...prev, location_state: value }))
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select governorate" />
+                </SelectTrigger>
+                <SelectContent>
                   {Object.values(OmanGovernorate).map((governorate) => (
                     <SelectItem key={governorate} value={governorate}>
                       {governorate}
                     </SelectItem>
                   ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="location_city">City</Label>
+              <Input 
+                id="location_city" 
+                name="location_city"
+                value={lab.location_city} 
+                onChange={handleInputChange} 
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="contact_number">Contact Number</Label>
+              <Input 
+                id="contact_number" 
+                name="contact_number"
+                value={lab.contact_number} 
+                onChange={handleInputChange} 
+                required
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                name="email"
+                type="email"
+                value={lab.email} 
+                onChange={handleInputChange} 
+                required
+                className="mt-1"
+              />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="location_city">City</Label>
-            <Input
-              id="location_city"
-              name="location_city"
-              value={lab.location_city}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="manager_name">Manager Name</Label>
-            <Input
-              id="manager_name"
-              name="manager_name"
-              value={lab.manager_name}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="contact_number">Contact Number</Label>
-            <Input
-              id="contact_number"
-              name="contact_number"
-              value={lab.contact_number}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={lab.email}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="lab_category">Laboratory Category</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={open}
-                  className="w-full justify-between"
+
+          <div className="space-y-4 mt-6">
+            <h3 className="text-lg font-semibold">Staff Assignment</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="manager">Lab Manager</Label>
+                <Select
+                  value={getStaffByRole('lab in charge').find(
+                    (user) => user.email === lab.email
+                  )?.id || "none"}
+                  onValueChange={(value) => handleStaffSelect(value, 'manager')}
                 >
-                  {lab.lab_category
-                    ? labCategories.find(
-                        (cat) => cat.value === lab.lab_category
-                      )?.label
-                    : "Select category..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
-                <Command>
-                  <CommandInput
-                    placeholder="Search category..."
-                    className="h-9"
-                  />
-                  <CommandList>
-                    <CommandEmpty>No category found.</CommandEmpty>
-                    <CommandGroup>
-                      {labCategories.map((category) => (
-                        <CommandItem
-                          key={category.value}
-                          value={category.value}
-                          onSelect={(currentValue) => {
-                            setLab((prev) => ({
-                              ...prev,
-                              lab_category: currentValue as
-                                | "food"
-                                | "animal"
-                                | "human",
-                            }));
-                            setOpen(false);
-                          }}
-                        >
-                          {category.label}
-                          <Check
-                            className={cn(
-                              "ml-auto h-4 w-4",
-                              lab.lab_category === category.value
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select lab manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Manager</SelectItem>
+                    {getStaffByRole('lab in charge').map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id}>
+                        {manager.user_metadata?.name || 'Unknown'} ({manager.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="technician_lab_id">Lab Technician</Label>
+                <Select
+                  value={lab.technician_lab_id || "none"}
+                  onValueChange={(value) => handleStaffSelect(value, 'technician')}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a lab technician" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Technician</SelectItem>
+                    {getStaffByRole('lab technician').map((tech) => (
+                      <SelectItem key={tech.id} value={tech.id}>
+                        {tech.user_metadata?.name || 'Unknown'} ({tech.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="maintenance_staff_id">Maintenance Staff</Label>
+                <Select
+                  value={lab.maintenance_staff_id || "none"}
+                  onValueChange={(value) => handleStaffSelect(value, 'maintenance')}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select maintenance staff" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Maintenance Staff</SelectItem>
+                    {getStaffByRole('maintance staff').map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.user_metadata?.name || 'Unknown'} ({staff.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Laboratory"}
-          </Button>
+
+          <div className="flex justify-end mt-6">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Creating..." : "Create Laboratory"}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

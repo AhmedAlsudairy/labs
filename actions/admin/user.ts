@@ -7,11 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
- const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-
-
-
-
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 export async function getUsersByLaboratories(
     state: OmanGovernorate,
@@ -69,8 +65,6 @@ export async function getUsersByLaboratories(
     return laboratoriesWithUsers;
   }
   
-  
-  
 export async function updateUserRole(
     userId: string, 
     newRole: UserRole,
@@ -78,12 +72,12 @@ export async function updateUserRole(
     metadata: { 
       governorate?: string; 
       labId?: string;
-      user_category: user_category; // Added user_category as required field
+      user_category: user_category;
     }
   ) {
     console.log('Starting updateUserRole with:', { userId, newRole, oldRole, metadata });
   
-    const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff'];
+    const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff', 'lab technician'];
     if (!validRoles.includes(newRole)) {
       return { error: 'Invalid role specified.' };
     }
@@ -93,8 +87,8 @@ export async function updateUserRole(
       return { error: 'Governorate must be specified for coordinator role.' };
     }
   
-    if (newRole === 'lab in charge' && !metadata.labId) {
-      return { error: 'Laboratory must be specified for lab in charge role.' };
+    if (['lab in charge', 'maintance staff', 'lab technician'].includes(newRole) && !metadata.labId) {
+      return { error: 'Laboratory must be specified for laboratory staff roles.' };
     }
   
     // Validate user_category
@@ -108,9 +102,9 @@ export async function updateUserRole(
         {
           user_metadata: {
             role: newRole,
-            user_category: metadata.user_category, // Add user_category to metadata
+            user_category: metadata.user_category,
             ...(newRole === 'cordinator' && { governorate: metadata.governorate }),
-            ...(newRole === 'lab in charge' && { labId: metadata.labId }),
+            ...((['lab in charge', 'maintance staff', 'lab technician'].includes(newRole)) && { labId: metadata.labId }),
           }
         }
       );
@@ -122,82 +116,68 @@ export async function updateUserRole(
         return { error: 'Failed to update user role.' };
       }
   
-      // Handle laboratory manager updates
+      // Clear old role assignments
       if (oldRole === 'lab in charge') {
         console.log('Clearing old lab manager_id for user:', userId);
-        const { data: clearData, error: clearError } = await supabase
+        await supabase
           .from('laboratory')
           .update({ manager_id: null })
-          .eq('manager_id', userId)
-          .select();
+          .eq('manager_id', userId);
+      } else if (oldRole === 'lab technician') {
+        console.log('Clearing old lab technician_lab_id for user:', userId);
+        await supabase
+          .from('laboratory')
+          .update({ technician_lab_id: null })
+          .eq('technician_lab_id', userId);
+      } else if (oldRole === 'maintance staff') {
+        console.log('Clearing old lab maintenance_staff_id for user:', userId);
+        await supabase
+          .from('laboratory')
+          .update({ maintenance_staff_id: null })
+          .eq('maintenance_staff_id', userId);
+      }
   
-        console.log('Clear manager result:', { clearData, clearError });
+      // Set new role assignments
+      if (metadata.labId) {
+        const updateData: any = {};
+        
+        switch (newRole) {
+          case 'lab in charge':
+            updateData.manager_id = userId;
+            updateData.manager_name = data.user.user_metadata?.name || ''; 
+            break;
+          case 'lab technician':
+            updateData.technician_lab_id = userId;
+            break;
+          case 'maintance staff':
+            updateData.maintenance_staff_id = userId;
+            break;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          const { error: updateError } = await supabase
+            .from('laboratory')
+            .update(updateData)
+            .eq('lab_id', metadata.labId);
   
-        if (clearError) {
-          console.error('Error clearing old laboratory manager:', clearError);
+          if (updateError) {
+            console.error('Error updating laboratory staff:', updateError);
+            return { error: 'Failed to update laboratory staff assignment.' };
+          }
         }
       }
   
-      if (newRole === 'lab in charge' && metadata.labId) {
-        console.log('Setting new lab manager_id:', { 
-          userId, 
-          labId: metadata.labId 
-        });
-  
-        // First check if lab exists
-        const { data: labCheck } = await supabase
-          .from('laboratory')
-          .select('lab_id, manager_id')
-          .eq('lab_id', metadata.labId)
-          .single();
-  
-        console.log('Lab check result:', labCheck);
-  
-        // Update manager_id
-        const { data: updateData, error: updateError } = await supabase
-          .from('laboratory')
-          .update({ manager_id: userId })
-          .eq('lab_id', metadata.labId)
-          .select();
-  
-        console.log('Update manager result:', { updateData, updateError });
-  
-        if (updateError) {
-          console.error('Error updating laboratory manager:', updateError);
-          return { error: 'Failed to update laboratory manager.' };
-        }
-  
-        // Verify update
-        const { data: verifyData } = await supabase
-          .from('laboratory')
-          .select('manager_id')
-          .eq('lab_id', metadata.labId)
-          .single();
-  
-        console.log('Verification result:', verifyData);
-      }
-  
-      return { 
-        success: true, 
-        message: `User role updated to ${newRole} (${metadata.user_category})${
-          metadata.governorate ? ` for ${metadata.governorate} governorate` : ''
-        }${
-          metadata.labId ? ` for laboratory ${metadata.labId}` : ''
-        }` 
-      };
+      return { success: true, message: `User role updated to ${newRole}` };
     } catch (error) {
-      console.error('Unexpected error updating user role:', error);
-      return { error: `Failed to update user role: ${(error as Error).message}` };
+      console.error('Error in updateUserRole:', error);
+      return { error: 'Failed to update user role.' };
     }
   }
   
-  // In actions/admin.ts
-  export async function createUser({ email, password, role, name, metadata }: CreateUserParams
-    
-  ) {
+  export async function createUser({ email, password, role, name, metadata }: CreateUserParams) {
     console.log('Creating user:', { email, role, name, metadata });
   
-    const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff'];
+    const validRoles: UserRole[] = ['admin', 'cordinator', 'lab in charge', 'maintance staff', 'lab technician'];
     if (!validRoles.includes(role)) {
       console.error('Invalid role specified:', role);
       return { error: 'Invalid role specified.' };
@@ -226,17 +206,35 @@ export async function updateUserRole(
       }
   
       console.log('User created successfully:', newUser.user.id);
-      if (role === 'lab in charge' && newUser?.user) {
+      
+      // Handle lab assignments for different roles
+      if (metadata?.labId && newUser?.user) {
         try {
-          // Update the laboratory with the new manager's ID
-          await supabase
-            .from('laboratory')
-            .update({ manager_id: newUser.user.id })
-            .eq('lab_id', metadata?.labId);
+          const updateData: any = {};
+          
+          switch (role) {
+            case 'lab in charge':
+              updateData.manager_id = newUser.user.id;
+              break;
+            case 'lab technician':
+              updateData.technician_lab_id = newUser.user.id;
+              break;
+            case 'maintance staff':
+              updateData.maintenance_staff_id = newUser.user.id;
+              break;
+          }
+          
+          if (Object.keys(updateData).length > 0) {
+            await supabase
+              .from('laboratory')
+              .update(updateData)
+              .eq('lab_id', metadata.labId);
+          }
         } catch (error) {
-          console.error('Error updating laboratory manager:', error);
+          console.error('Error updating laboratory staff:', error);
         }
       }
+      
       return { success: true, message: `User created successfully with role: ${role}` };
     } catch (error) {
       console.error('Unexpected error creating user:', error);
@@ -249,33 +247,93 @@ export async function updateUserRole(
     return data;
   }
   
-  
-  //labs end here
-  
   export async function getUsers() {
     const { data: { users }, error } = await supabase.auth.admin.listUsers()
     if (error) throw error;
     return users;
   }
   
+  export async function listUsers() {
+    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+  
+    if (error) {
+      throw error;
+    }
+
+    return users;
+  }
+
   export async function getStaff(labId: number): Promise<Staff[]> {
-    const { data, error } = await supabase
+    // First, get the laboratory with all staff IDs
+    const { data: lab, error: labError } = await supabase
       .from('laboratory')
       .select(`
         manager_id,
-        manager_name
+        manager_name,
+        technician_lab_id,
+        maintenance_staff_id
       `)
-      .eq('lab_id', labId);
-  
-    if (error) throw error;
-  
-    return data.map(lab => ({
-      id: lab.manager_id,
-      name: lab.manager_name,
-      role: 'Manager',
-    }));
+      .eq('lab_id', labId)
+      .single();
+
+    if (labError) throw labError;
+
+    // Collect all staff IDs (filtering out null values)
+    const staffIds = [
+      lab.manager_id,
+      lab.technician_lab_id,
+      lab.maintenance_staff_id
+    ].filter(id => id !== null);
+
+    if (staffIds.length === 0) return [];
+
+    // Get user details for all staff members
+    const { data: users, error: usersError } = await supabase.auth.admin
+      .listUsers();
+
+    if (usersError) throw usersError;
+
+    // Create staff array with role mapping
+    const staffMembers: Staff[] = [];
+
+    // Add manager if exists
+    if (lab.manager_id) {
+      const managerUser = users.users.find(user => user.id === lab.manager_id);
+      if (managerUser) {
+        staffMembers.push({
+          id: managerUser.id,
+          name: lab.manager_name || managerUser.user_metadata?.name || 'Unknown',
+          email: managerUser.email || '',
+          role: 'lab in charge'
+        });
+      }
+    }
+
+    // Add technician if exists
+    if (lab.technician_lab_id) {
+      const techUser = users.users.find(user => user.id === lab.technician_lab_id);
+      if (techUser) {
+        staffMembers.push({
+          id: techUser.id,
+          name: techUser.user_metadata?.name || 'Unknown',
+          email: techUser.email || '',
+          role: 'lab technician'
+        });
+      }
+    }
+
+    // Add maintenance staff if exists
+    if (lab.maintenance_staff_id) {
+      const maintUser = users.users.find(user => user.id === lab.maintenance_staff_id);
+      if (maintUser) {
+        staffMembers.push({
+          id: maintUser.id,
+          name: maintUser.user_metadata?.name || 'Unknown',
+          email: maintUser.email || '',
+          role: 'maintance staff'
+        });
+      }
+    }
+
+    return staffMembers;
   }
-  
-  
-  
-  

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, UserRole, Laboratory, user_category } from "@/types"
 import { toast } from "@/hooks/use-toast"
-import { getLaboratories } from "@/actions/admin/lab"
+import { getLaboratories, getLaboratoryUserId } from "@/actions/admin/lab"
 import { deleteUser, updateUserRole } from "@/actions/admin/user"
 
 // Oman governorates list
@@ -32,11 +32,11 @@ interface UsersTableProps {
 export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [editingUserRole, setEditingUserRole] = useState<UserRole>("lab in charge")
-  const [editingGovernorate, setEditingGovernorate] = useState<string>("")
-  const [editingLabId, setEditingLabId] = useState<string>("")
+  const [editingGovernorate, setEditingGovernorate] = useState<string>("none")
+  const [editingLabId, setEditingLabId] = useState<string>("none")
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [oldRole, setOldRole] = useState<UserRole | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<user_category>('food');
+  const [selectedCategory, setSelectedCategory] = useState<user_category | null>(null);
 
   useEffect(() => {
     fetchLaboratories();
@@ -61,52 +61,42 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
   };
 
   const handleEdit = async (userId: string) => {
-    try {
-      if (!oldRole) {
-        toast({
-          title: "Error",
-          description: "Could not determine current role",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const metadata = {
-        ...(editingUserRole === 'cordinator' ? { governorate: editingGovernorate } : {}),
-        ...(editingUserRole === 'lab in charge' ? { labId: editingLabId } : {}),
-        user_category: selectedCategory,
-      };
-
-      await updateUserRole(
-        userId,
-        editingUserRole,
-        oldRole,
-        metadata
-      );
-console.log(userId, editingUserRole, oldRole, metadata)
-      toast({
-        title: "Success",
-        description: "User role updated successfully",
-      });
-
-      // Reset states
-      setEditingUserId("");
-      setEditingUserRole("lab in charge");
-      setEditingGovernorate("");
-      setEditingLabId("");
-      setOldRole(null);
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setEditingUserId(userId);
+      setEditingUserRole(user.role as UserRole);
+      setOldRole(user.role as UserRole);
       
-      // Refresh user list if needed
-      if (onUserUpdated) {
-        onUserUpdated();
+      // Set governorate if it exists in metadata
+      setEditingGovernorate(user.metadata?.governorate || "none");
+      
+      try {
+        // Ensure laboratories are loaded
+        if (laboratories.length === 0) {
+          const labs = await getLaboratories();
+          setLaboratories(labs);
+        }
+
+        // Check laboratory association for any role
+        try {
+          const userLab = await getLaboratoryUserId(userId);
+          if (userLab) {
+            setEditingLabId(userLab.lab_id.toString());
+            console.log('Found lab for user:', userLab);
+          } else {
+            setEditingLabId("none");
+          }
+        } catch (error) {
+          console.log('No laboratory found for this user');
+          setEditingLabId("none");
+        }
+      } catch (error) {
+        console.error('Error in handleEdit:', error);
+        setEditingLabId("none");
       }
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update user role",
-        variant: "destructive",
-      });
+      
+      // Set user category if it exists in metadata
+      setSelectedCategory((user.metadata?.user_category as user_category) || null);
     }
   }
 
@@ -135,6 +125,64 @@ console.log(userId, editingUserRole, oldRole, metadata)
     return lab ? lab.name : 'Unknown Laboratory';
   };
 
+  const handleSave = async () => {
+    if (!oldRole) {
+      toast({
+        title: "Error",
+        description: "Could not determine current role",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedCategory) {
+      toast({
+        title: "Error",
+        description: "Please select a category",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const metadata = {
+      ...(editingUserRole === 'cordinator' ? { 
+        governorate: editingGovernorate === 'none' ? undefined : editingGovernorate 
+      } : {}),
+      ...(editingUserRole === 'lab in charge' ? { 
+        labId: editingLabId === 'none' ? undefined : editingLabId 
+      } : {}),
+      user_category: selectedCategory,
+    };
+
+    updateUserRole(
+      editingUserId as string,
+      editingUserRole,
+      oldRole as UserRole,
+      metadata
+    ).then(() => {
+      toast({
+        title: "Success",
+        description: "User role updated successfully",
+      });
+      // Reset states
+      setEditingUserId(null);
+      setEditingUserRole("lab in charge");
+      setEditingGovernorate("none");
+      setEditingLabId("none");
+      setSelectedCategory(null);
+      setOldRole(null);
+      // Refresh user list
+      onUserUpdated();
+    }).catch((error) => {
+      console.error('Error updating user role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive",
+      });
+    });
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -159,100 +207,116 @@ console.log(userId, editingUserRole, oldRole, metadata)
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.role}</TableCell>
                   <TableCell>
-                    {user.role === 'cordinator' && user.metadata?.governorate && (
+                    {user.metadata?.governorate && (
                       <span>Governorate: {user.metadata.governorate}</span>
                     )}
-                    {user.role === 'lab in charge' && user.metadata?.labId && (
+                    {user.metadata?.labId && (
                       <span>Laboratory: {getLaboratoryName(user.metadata.labId)}</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button onClick={() => setEditingUserId(user.id)} className="mr-2">Edit</Button>
+                    <Button onClick={() => handleEdit(user.id)} className="mr-2">Edit</Button>
                     <Button onClick={() => handleDelete(user.id)} variant="destructive">Delete</Button>
                   </TableCell>
                 </TableRow>
                 {editingUserId === user.id && (
                   <TableRow>
                     <TableCell colSpan={5}>
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="role">New Role:</Label>
-                        <Select 
-                          onValueChange={(value: UserRole) => {
-                            setEditingUserRole(value);
-                            setEditingGovernorate("");
-                            setEditingLabId("");
-                          }} 
-                          value={editingUserRole}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Select a role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="cordinator">Coordinator</SelectItem>
-                            <SelectItem value="lab in charge">Lab In Charge</SelectItem>
-                            <SelectItem value="maintance staff">Maintenance Staff</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="role" className="text-right">Role:</Label>
+                          <div className="col-span-3">
+                            <Select 
+                              onValueChange={(value: UserRole) => {
+                                console.log('Selected role:', value);
+                                setEditingUserRole(value);
+                                // Reset values when changing role
+                                setEditingGovernorate("none");
+                                setEditingLabId("none");
+                              }} 
+                              defaultValue={editingUserRole}
+                              value={editingUserRole}
+                            >
+                              <SelectTrigger className="w-[280px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="cordinator">Coordinator</SelectItem>
+                                <SelectItem value="lab in charge">Lab In Charge</SelectItem>
+                                <SelectItem value="maintance staff">Maintenance Staff</SelectItem>
+                                <SelectItem value="lab technician">Lab Technician</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
 
                         {editingUserRole === "cordinator" && (
-                          <>
-                            <Label htmlFor="governorate">Governorate:</Label>
-                            <Select 
-                              onValueChange={setEditingGovernorate} 
-                              value={editingGovernorate}
-                            >
-                              <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select a governorate" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {omanGovernorates.map((gov) => (
-                                  <SelectItem key={gov} value={gov}>
-                                    {gov}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="governorate" className="text-right">Governorate:</Label>
+                            <div className="col-span-3">
+                              <Select 
+                                onValueChange={(value) => {
+                                  console.log('Selected governorate:', value);
+                                  setEditingGovernorate(value);
+                                }}
+                                defaultValue={editingGovernorate}
+                                value={editingGovernorate}
+                              >
+                                <SelectTrigger className="w-[280px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Select Governorate</SelectItem>
+                                  {omanGovernorates.map((gov) => (
+                                    <SelectItem key={gov} value={gov}>
+                                      {gov}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         )}
 
-                        {editingUserRole === "lab in charge" && (
-                          <>
-                            <Label htmlFor="laboratory">Laboratory:</Label>
-                            <Select 
-                              onValueChange={setEditingLabId} 
-                              value={editingLabId}
-                            >
-                              <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select a laboratory" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {laboratories.map((lab) => (
-                                  <SelectItem key={lab.lab_id} value={lab.lab_id.toString()}>
-                                    {lab.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </>
+                        {(editingUserRole === "lab in charge" || editingUserRole === "lab technician" || editingUserRole === "maintance staff") && (
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="laboratory" className="text-right">Laboratory:</Label>
+                            <div className="col-span-3">
+                              <Select 
+                                onValueChange={(value) => {
+                                  console.log('Selected lab:', value);
+                                  setEditingLabId(value);
+                                }}
+                                defaultValue={editingLabId}
+                                value={editingLabId}
+                              >
+                                <SelectTrigger className="w-[280px]">
+                                  <SelectValue defaultValue={editingLabId}>
+                                    {editingLabId === "none" 
+                                      ? "Select Laboratory" 
+                                      : getLaboratoryName(editingLabId)}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Select Laboratory</SelectItem>
+                                  {laboratories.map((lab) => (
+                                    <SelectItem key={lab.lab_id} value={lab.lab_id.toString()}>
+                                      {lab.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         )}
-
-                        <Label htmlFor="category">Category:</Label>
-                        <Select
-                          value={selectedCategory}
-                          onValueChange={(value: user_category) => setSelectedCategory(value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="food">Food</SelectItem>
-                            <SelectItem value="animal">Animal</SelectItem>
-                            <SelectItem value="human">Human</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        <Button onClick={() => handleEdit(user.id)}>Update Role</Button>
+                        
+                        <div className="grid grid-cols-4 gap-4 pt-4">
+                          <div className="col-start-2 col-span-2 flex justify-end gap-2">
+                            <Button onClick={handleSave} className="mr-2">Save</Button>
+                            <Button onClick={() => setEditingUserId(null)} variant="outline">Cancel</Button>
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>

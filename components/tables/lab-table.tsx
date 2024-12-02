@@ -69,24 +69,33 @@ console.log(laboratories)
                 <TableCell>{`${lab.location_city}, ${lab.location_state}`}</TableCell>
                 <TableCell>{lab.manager_name}</TableCell>
                 <TableCell>
-                
-                  <Button onClick={() => setEditingLabId(lab.lab_id)} className="mr-2">Edit</Button>
-                  <Button onClick={() => handleDelete(lab.lab_id)} variant="destructive">Delete</Button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => setEditingLabId(lab.lab_id)} size="sm" variant="outline">Edit</Button>
+                    <Button onClick={() => handleDelete(lab.lab_id)} size="sm" variant="destructive">Delete</Button>
+                  </div>
                 </TableCell>
               </TableRow>
               {editingLabId === lab.lab_id && (
                 <TableRow>
-                  <TableCell colSpan={4}>
-                    <EditLabForm 
-                      labId={lab.lab_id} 
-                      onLabUpdated={() => {
-                        setEditingLabId(null)
-                        onLabUpdated()
-                      }} 
-                    />
+                  <TableCell colSpan={5} className="p-4">
+                    <div className="relative">
+                      <Button 
+                        onClick={() => setEditingLabId(null)} 
+                        size="sm" 
+                        variant="ghost" 
+                        className="absolute right-0 top-0"
+                      >
+                        &#10005;
+                      </Button>
+                      <EditLabForm 
+                        labId={lab.lab_id} 
+                        onLabUpdated={() => {
+                          setEditingLabId(null)
+                          onLabUpdated()
+                        }} 
+                      />
+                    </div>
                   </TableCell>
-                  
-
                 </TableRow>
               )}
             </React.Fragment>

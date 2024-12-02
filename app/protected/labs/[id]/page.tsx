@@ -79,7 +79,7 @@ export default function LaboratoryPage() {
           supplier: eu.supplier || '',
           type: eu.type || '',
           calibrationState: eu.calibrationState || 'none',
-      maintenanceState: eu.maintenanceState ||'done',
+          maintenanceState: eu.maintenanceState ||'done',
         })),
       });
     } catch (error) {
@@ -180,7 +180,15 @@ export default function LaboratoryPage() {
   };
 
   if (isLoading) {
-    return  <Skeleton className="w-[100px] h-[20px] rounded-full" />
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <div className="space-y-4">
+          <Skeleton className="w-[200px] h-[20px] rounded-full" />
+          <Skeleton className="w-[300px] h-[150px] rounded-lg" />
+          <Skeleton className="w-[250px] h-[20px] rounded-full" />
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -188,73 +196,93 @@ export default function LaboratoryPage() {
   }
 
   if (!labData) {
-    return <div>Laboratory not found</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <IdCard className="w-12 h-12 text-gray-400 mx-auto" />
+          <h2 className="text-xl font-semibold">Laboratory not found</h2>
+          <p className="text-gray-500">The requested laboratory could not be found.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="relative w-full min-h-screen bg-background">
-      {/* Remove default page margins and add viewport control */}
-      <div className="w-full h-full overflow-x-hidden">
-        {/* Main content container with controlled width and padding */}
-        <div className="w-full max-w-[2000px] mx-auto px-3 sm:px-4 lg:px-6">
-          {/* Content wrapper with proper spacing */}
-          <div className="w-full py-4 space-y-4 sm:space-y-6">
-            {/* Rest of your components */}
-            <LaboratoryHeader
-              name={labData.name}
-              locationCity={labData.location_city}
-              locationState={labData.location_state}
-            />
-            <LaboratoryInfo
-              managerName={labData.manager_name}
-              contactNumber={labData.contact_number}
-              email={labData.email}
-            />
+      <div className="w-full h-full">
+        <div className="max-w-[2000px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6 space-y-6 sm:space-y-8">
+            {/* Header Section */}
+            <div className="space-y-6">
+              <LaboratoryHeader
+                name={labData.name}
+                locationCity={labData.location_city}
+                locationState={labData.location_state}
+              />
+              <LaboratoryInfo
+                managerName={labData.manager_name}
+                contactNumber={labData.contact_number}
+                email={labData.email}
+              />
+            </div>
 
-            <StatCards
-              equipmentCount={labData.equipment.length}
-              staffCount={labData.staff.length}
-              activeEquipmentCount={
-                labData.equipment.filter((eq) => eq.status === "Operational").length
-              }
-              maintenanceRecordCount={labData.maintenanceRecords.length}
-            />
+            {/* Stats Section */}
+            <div className="py-4">
+              <StatCards
+                equipmentCount={labData.equipment.length}
+                staffCount={labData.staff.length}
+                activeEquipmentCount={
+                  labData.equipment.filter((eq) => eq.status === "Operational").length
+                }
+                maintenanceRecordCount={labData.maintenanceRecords.length}
+              />
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
-              <Card className="overflow-hidden">
-                <CardHeader className="p-3 sm:p-4">
-                  <CardTitle className="text-base sm:text-lg">Equipment Status</CardTitle>
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="shadow-lg hover:shadow-xl transition-shadow duration-200">
+                <CardHeader className="p-4 border-b">
+                  <CardTitle className="text-lg font-semibold">Equipment Status</CardTitle>
                 </CardHeader>
-                <CardContent className="p-2 sm:p-4">
+                <CardContent className="p-4">
                   <EquipmentStatusChart equipment={labData.equipment} />
                 </CardContent>
               </Card>
-              
-              <Card className="overflow-hidden">
-                <CardHeader className="p-3 sm:p-4">
-                  <CardTitle className="text-base sm:text-lg">Equipment Usage</CardTitle>
+
+              <Card className="shadow-lg hover:shadow-xl transition-shadow duration-200">
+                <CardHeader className="p-4 border-b">
+                  <CardTitle className="text-lg font-semibold">Equipment Usage</CardTitle>
                 </CardHeader>
-                <CardContent className="p-2 sm:p-4">
+                <CardContent className="p-4">
                   <EquipmentUsageChart equipmentUsage={labData.equipmentUsage} />
                 </CardContent>
               </Card>
             </div>
 
-            <EquipmentSection
-              labId={labId}
-              equipment={labData.equipment}
-              onAddEquipment={handleEquipmentSubmit}
-              onEditEquipment={handleEquipmentEdit}
-              onDeleteEquipment={handleEquipmentDelete}
-            />
+            {/* Equipment Section */}
+            <div className="space-y-6">
+              <EquipmentSection
+                labId={labId}
+                equipment={labData.equipment}
+                onAddEquipment={handleEquipmentSubmit}
+                onEditEquipment={handleEquipmentEdit}
+                onDeleteEquipment={handleEquipmentDelete}
+              />
 
-            <StaffSection staff={labData.staff} />
+              {/* Staff Section */}
+              <StaffSection 
+                staff={labData.staff} 
+                labId={labId}
+                onStaffUpdated={fetchLabData}
+              />
 
-            <MaintenanceSection
-              maintenanceRecords={labData.maintenanceRecords}
-              equipment={labData.equipment}
-              onAddMaintenanceRecord={handleMaintenanceSubmit}
-            />
+              {/* Maintenance Section */}
+              <MaintenanceSection
+                maintenanceRecords={labData.maintenanceRecords}
+                equipment={labData.equipment}
+                onAddMaintenanceRecord={handleMaintenanceSubmit}
+              />
+            </div>
           </div>
         </div>
       </div>

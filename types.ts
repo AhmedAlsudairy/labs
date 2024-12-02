@@ -9,6 +9,7 @@ export type User = {
   metadata?: {
     governorate?: string;
     labId?: string;
+    user_category?: user_category;
   };
 };
 // Laboratory
@@ -22,6 +23,8 @@ export interface Laboratory {
   contact_number: string;
   email: string;
   lab_category: "food" | "animal" | "human";
+  technician_lab_id?: string;
+  maintenance_staff_id?: string;
   user?: User; // Optional user field
 }
 
@@ -83,13 +86,17 @@ export type CreateLaboratoryParams = {
   manager_name: string;
   contact_number: string;
   email: string;
-  lab_category: "food" | "animal" | "human"
+  lab_category: "food" | "animal" | "human";
+  technician_lab_id?: string;
+  maintenance_staff_id?: string;
+  manager_id?: string;
 };
 
-export type Staff = {
-  id: number;
+export interface Staff {
+  id: string;
   name: string;
   role: string;
+  email: string;
 };
 
 // Maintenance Record
@@ -123,6 +130,7 @@ export type CreateUserParams = {
   metadata?: {
     governorate?: string;
     labId?: string;
+    user_category?: user_category;
   };
 };
 

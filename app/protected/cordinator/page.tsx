@@ -45,15 +45,38 @@ const Page = () => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const handleLabUpdate = async () => {
-    if (!selectedLabId || !user) return;
+    if (!selectedLabId || !editingUserId) return;
     
     setIsUpdating(true);
     setUpdateError(null);
+
+    // Find the user being edited to get their role
+    const userLab = laboratories.find(lab => lab.user?.id === editingUserId);
+    if (!userLab?.user?.role) {
+      setUpdateError('User role not found');
+      setIsUpdating(false);
+      return;
+    }
+
+    // Only allow lab staff roles
+    let staffRole = userLab.user.role;
+    if (!['lab in charge', 'lab technician', 'maintance staff'].includes(staffRole)) {
+      staffRole = 'lab in charge'; // Default to lab in charge if not a valid lab staff role
+    }
     
-    const result = await updateUserLabAssignment(user.id, selectedLabId);
+    const result = await updateUserLabAssignment(editingUserId, selectedLabId, staffRole);
     
     if (result.error) {
       setUpdateError(result.error);
+    } else {
+      // Refresh the data
+      const labsData = await getUsersByLaboratories(
+        user?.user_metadata.governorate,
+        user?.user_metadata.user_category
+      );
+      setLaboratories(labsData || []);
+      setEditingUserId(null);
+      setSelectedLabId('');
     }
     
     setIsUpdating(false);

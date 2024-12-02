@@ -27,24 +27,38 @@ const omanGovernorates = [
 
 interface CreateUserFormProps {
   onUserCreated: () => void;
+  currentUserRole?: UserRole;
+  restrictRoles?: UserRole[];
+  defaultLabId?: string;
 }
 
-export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
+export default function CreateUserForm({ 
+  onUserCreated, 
+  currentUserRole = "admin",
+  restrictRoles = [],
+  defaultLabId
+}: CreateUserFormProps) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [role, setRole] = useState<UserRole>("lab in charge")
+  const [role, setRole] = useState<UserRole>(restrictRoles[0] || "lab in charge")
   const [name, setName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [selectedGovernorate, setSelectedGovernorate] = useState("")
-  const [selectedLab, setSelectedLab] = useState("")
+  const [selectedLab, setSelectedLab] = useState(defaultLabId || "")
   const [userCategory, setUserCategory] = useState<user_category>('food')
 
   useEffect(() => {
-    if (role === "lab in charge") {
+    if (["lab in charge", "lab technician", "maintance staff"].includes(role)) {
       fetchLaboratories();
     }
   }, [role]);
+
+  useEffect(() => {
+    if (defaultLabId) {
+      setSelectedLab(defaultLabId);
+    }
+  }, [defaultLabId]);
 
   const fetchLaboratories = async () => {
     try {
@@ -64,6 +78,9 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
     e.preventDefault()
     setIsLoading(true)
     try {
+      // If we have restrictRoles and defaultLabId, this means we're creating staff for a specific lab
+      const labIdToUse = restrictRoles.length > 0 ? defaultLabId : selectedLab;
+
       const userParams = { 
         email: username, 
         password, 
@@ -71,7 +88,8 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
         name,
         metadata: {
           ...(role === "cordinator" && { governorate: selectedGovernorate }),
-          ...(role === "lab in charge" && { labId: selectedLab }),
+          ...(["lab in charge", "lab technician", "maintance staff"].includes(role) && 
+              { labId: labIdToUse }),
           user_category: userCategory
         }
       }
@@ -105,10 +123,10 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
   const resetForm = () => {
     setUsername("")
     setPassword("")
-    setRole("lab in charge")
+    setRole(restrictRoles[0] || "lab in charge")
     setName("")
     setSelectedGovernorate("")
-    setSelectedLab("")
+    setSelectedLab(defaultLabId || "")
     setUserCategory("food")
   }
 
@@ -149,15 +167,29 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
           </div>
           <div>
             <Label htmlFor="role">Role</Label>
-            <Select onValueChange={(value: UserRole) => setRole(value)} value={role}>
+            <Select
+              value={role}
+              onValueChange={(value: UserRole) => setRole(value)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select a role" />
+                <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="cordinator">Coordinator</SelectItem>
-                <SelectItem value="lab in charge">Lab In Charge</SelectItem>
-                <SelectItem value="maintance staff">Maintenance Staff</SelectItem>
+                {restrictRoles.length > 0 ? (
+                  restrictRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="cordinator">Coordinator</SelectItem>
+                    <SelectItem value="lab in charge">Lab In Charge</SelectItem>
+                    <SelectItem value="lab technician">Lab Technician</SelectItem>
+                    <SelectItem value="maintance staff">Maintenance Staff</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -184,8 +216,9 @@ export default function CreateUserForm({ onUserCreated }: CreateUserFormProps) {
             </div>
           )}
 
-          {/* Laboratory selection for lab in charge */}
-          {role === "lab in charge" && (
+          {/* Laboratory selection for lab staff - only show if not restricted roles */}
+          {["lab in charge", "lab technician", "maintance staff"].includes(role) && 
+           !restrictRoles.length && (
             <div>
               <Label htmlFor="laboratory">Laboratory</Label>
               <Select 
