@@ -37,10 +37,7 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [oldRole, setOldRole] = useState<UserRole | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<user_category | null>(null);
-
-  useEffect(() => {
-    fetchLaboratories();
-  }, []);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
 
   useEffect(() => {
     if (editingUserId) {
@@ -50,6 +47,10 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
       }
     }
   }, [editingUserId]);
+
+  useEffect(() => {
+    fetchLaboratories();
+  }, []);
 
   const fetchLaboratories = async () => {
     try {
@@ -61,20 +62,13 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
   };
 
   const handleEdit = async (userId: string) => {
+    setIsLoadingEdit(true);
     const user = users.find(u => u.id === userId);
     if (user) {
-      setEditingUserId(userId);
-      setEditingUserRole(user.role as UserRole);
-      setOldRole(user.role as UserRole);
-      
-      // Set governorate if it exists in metadata
-      setEditingGovernorate(user.metadata?.governorate || "none");
-      
       try {
         // Ensure laboratories are loaded
         if (laboratories.length === 0) {
-          const labs = await getLaboratories();
-          setLaboratories(labs);
+          await fetchLaboratories();
         }
 
         // Check laboratory association for any role
@@ -90,15 +84,35 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
           console.log('No laboratory found for this user');
           setEditingLabId("none");
         }
+
+        // Set all the editing states
+        setEditingUserId(userId);
+        setEditingUserRole(user.role as UserRole);
+        setOldRole(user.role as UserRole);
+        setEditingGovernorate(user.metadata?.governorate || "none");
+        setSelectedCategory((user.metadata?.user_category as user_category) || null);
       } catch (error) {
         console.error('Error in handleEdit:', error);
-        setEditingLabId("none");
+        toast({
+          title: "Error",
+          description: "Failed to load user data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingEdit(false);
       }
-      
-      // Set user category if it exists in metadata
-      setSelectedCategory((user.metadata?.user_category as user_category) || null);
     }
-  }
+  };
+
+  const handleCancel = () => {
+    setEditingUserId(null);
+    setEditingUserRole("lab in charge");
+    setEditingGovernorate("none");
+    setEditingLabId("none");
+    setSelectedCategory(null);
+    setOldRole(null);
+    setIsLoadingEdit(false);
+  };
 
   const handleDelete = async (userId: string) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
@@ -215,109 +229,119 @@ export default function UsersTable({ users, onUserUpdated }: UsersTableProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button onClick={() => handleEdit(user.id)} className="mr-2">Edit</Button>
+                    <Button 
+                      onClick={() => handleEdit(user.id)} 
+                      className="mr-2"
+                      disabled={isLoadingEdit}
+                    >
+                      {isLoadingEdit && editingUserId === user.id ? "Loading..." : "Edit"}
+                    </Button>
                     <Button onClick={() => handleDelete(user.id)} variant="destructive">Delete</Button>
                   </TableCell>
                 </TableRow>
                 {editingUserId === user.id && (
                   <TableRow>
                     <TableCell colSpan={5}>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="role" className="text-right">Role:</Label>
-                          <div className="col-span-3">
-                            <Select 
-                              onValueChange={(value: UserRole) => {
-                                console.log('Selected role:', value);
-                                setEditingUserRole(value);
-                                // Reset values when changing role
-                                setEditingGovernorate("none");
-                                setEditingLabId("none");
-                              }} 
-                              defaultValue={editingUserRole}
-                              value={editingUserRole}
-                            >
-                              <SelectTrigger className="w-[280px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="cordinator">Coordinator</SelectItem>
-                                <SelectItem value="lab in charge">Lab In Charge</SelectItem>
-                                <SelectItem value="maintance staff">Maintenance Staff</SelectItem>
-                                <SelectItem value="lab technician">Lab Technician</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        {editingUserRole === "cordinator" && (
+                      {isLoadingEdit ? (
+                        <div className="py-4 text-center">Loading user data...</div>
+                      ) : (
+                        <div className="grid gap-4 py-4">
                           <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="governorate" className="text-right">Governorate:</Label>
+                            <Label htmlFor="role" className="text-right">Role:</Label>
                             <div className="col-span-3">
                               <Select 
-                                onValueChange={(value) => {
-                                  console.log('Selected governorate:', value);
-                                  setEditingGovernorate(value);
-                                }}
-                                defaultValue={editingGovernorate}
-                                value={editingGovernorate}
+                                onValueChange={(value: UserRole) => {
+                                  console.log('Selected role:', value);
+                                  setEditingUserRole(value);
+                                  // Reset values when changing role
+                                  setEditingGovernorate("none");
+                                  setEditingLabId("none");
+                                }} 
+                                defaultValue={editingUserRole}
+                                value={editingUserRole}
                               >
                                 <SelectTrigger className="w-[280px]">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">Select Governorate</SelectItem>
-                                  {omanGovernorates.map((gov) => (
-                                    <SelectItem key={gov} value={gov}>
-                                      {gov}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="cordinator">Coordinator</SelectItem>
+                                  <SelectItem value="lab in charge">Lab In Charge</SelectItem>
+                                  <SelectItem value="maintance staff">Maintenance Staff</SelectItem>
+                                  <SelectItem value="lab technician">Lab Technician</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                           </div>
-                        )}
 
-                        {(editingUserRole === "lab in charge" || editingUserRole === "lab technician" || editingUserRole === "maintance staff") && (
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="laboratory" className="text-right">Laboratory:</Label>
-                            <div className="col-span-3">
-                              <Select 
-                                onValueChange={(value) => {
-                                  console.log('Selected lab:', value);
-                                  setEditingLabId(value);
-                                }}
-                                defaultValue={editingLabId}
-                                value={editingLabId}
-                              >
-                                <SelectTrigger className="w-[280px]">
-                                  <SelectValue defaultValue={editingLabId}>
-                                    {editingLabId === "none" 
-                                      ? "Select Laboratory" 
-                                      : getLaboratoryName(editingLabId)}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Select Laboratory</SelectItem>
-                                  {laboratories.map((lab) => (
-                                    <SelectItem key={lab.lab_id} value={lab.lab_id.toString()}>
-                                      {lab.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                          {editingUserRole === "cordinator" && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="governorate" className="text-right">Governorate:</Label>
+                              <div className="col-span-3">
+                                <Select 
+                                  onValueChange={(value) => {
+                                    console.log('Selected governorate:', value);
+                                    setEditingGovernorate(value);
+                                  }}
+                                  defaultValue={editingGovernorate}
+                                  value={editingGovernorate}
+                                >
+                                  <SelectTrigger className="w-[280px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Select Governorate</SelectItem>
+                                    {omanGovernorates.map((gov) => (
+                                      <SelectItem key={gov} value={gov}>
+                                        {gov}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        
-                        <div className="grid grid-cols-4 gap-4 pt-4">
-                          <div className="col-start-2 col-span-2 flex justify-end gap-2">
-                            <Button onClick={handleSave} className="mr-2">Save</Button>
-                            <Button onClick={() => setEditingUserId(null)} variant="outline">Cancel</Button>
+                          )}
+
+                          {(editingUserRole === "lab in charge" || editingUserRole === "lab technician" || editingUserRole === "maintance staff") && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="laboratory" className="text-right">Laboratory:</Label>
+                              <div className="col-span-3">
+                                <Select 
+                                  onValueChange={(value) => {
+                                    console.log('Selected lab:', value);
+                                    setEditingLabId(value);
+                                  }}
+                                  defaultValue={editingLabId}
+                                  value={editingLabId}
+                                >
+                                  <SelectTrigger className="w-[280px]">
+                                    <SelectValue defaultValue={editingLabId}>
+                                      {editingLabId === "none" 
+                                        ? "Select Laboratory" 
+                                        : getLaboratoryName(editingLabId)}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Select Laboratory</SelectItem>
+                                    {laboratories.map((lab) => (
+                                      <SelectItem key={lab.lab_id} value={lab.lab_id.toString()}>
+                                        {lab.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="grid grid-cols-4 gap-4 pt-4">
+                            <div className="col-start-2 col-span-2 flex justify-end gap-2">
+                              <Button onClick={handleSave} className="mr-2">Save</Button>
+                              <Button onClick={handleCancel} variant="outline">Cancel</Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 )}
