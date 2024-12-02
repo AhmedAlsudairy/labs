@@ -46,7 +46,7 @@ function determineMaintenanceState(nextDate: Date): MaintenanceState {
   const today = new Date();
   const daysDiff = (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
   
-  if (daysDiff < 0) {
+  if (daysDiff < -2) {
     return 'late maintance';
   } else if (daysDiff <= 0) {
     return 'need maintance';

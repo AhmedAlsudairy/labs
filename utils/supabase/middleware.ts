@@ -47,7 +47,7 @@ const labDashboardUrl = (labId: number) =>
   new URL(`/protected/labs/${labId}`, request.url);
 
     // Handle unauthenticated users trying to access protected routes
-    if (request.nextUrl.pathname.startsWith("/protected") && user.error) {
+    if ((request.nextUrl.pathname.startsWith("/protected") || request.nextUrl.pathname === '/') && user.error) {
       return NextResponse.redirect(authRedirectUrl);
     }
   
