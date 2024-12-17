@@ -9,7 +9,6 @@ import Link from "next/link";
 export default function Login({ searchParams }: { searchParams: Message }) {
   return (
     <div className="min-h-screen w-full flex items-center justify-center">
-      {/* Background image with overlay */}
       <div className="fixed inset-0 -z-10">
         <div 
           className="absolute inset-0 w-full h-full bg-[url('/sign_in.jpeg')] bg-cover bg-center bg-no-repeat bg-fixed"
@@ -18,15 +17,43 @@ export default function Login({ searchParams }: { searchParams: Message }) {
         <div className="absolute inset-0 bg-black/40 dark:bg-black/60" />
       </div>
       
-      {/* Content */}
-      <div className="w-full max-w-7xl mx-auto flex items-center justify-center p-4">
-        <Card className="w-full max-w-[400px] mx-auto bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm shadow-xl transition-colors duration-300">
+      <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-8 p-4">
+        {/* Information Panel */}
+        <div className="w-full max-w-[600px] text-white">
+          <div className="bg-black/30 backdrop-blur-sm p-6 rounded-lg">
+            <h2 className="text-2xl font-bold mb-4">Laboratory Equipment Management Platform in Oman</h2>
+            <p className="mb-4">A comprehensive solution supporting human, animal, and food laboratories in Oman.</p>
+            
+            <h3 className="text-xl font-semibold mb-2">Key Benefits:</h3>
+            <ul className="list-disc list-inside mb-4 space-y-1">
+              <li>Compliance with ISO 17025 Standards</li>
+              <li>Automated Maintenance & Calibration</li>
+              <li>EQC Integration</li>
+              <li>Downtime Reporting</li>
+              <li>Supervisors' Dashboard</li>
+            </ul>
+
+            <div className="mt-6 text-right" dir="rtl">
+              <h2 className="text-2xl font-bold mb-4">منصة إدارة المعدات المخبرية في عُمان</h2>
+              <p className="mb-4">حل شامل يدعم مختبرات الإنسان والحيوان والغذاء في عُمان</p>
+              
+              <div className="mt-4">
+                <p>للتواصل:</p>
+                <p>WhatsApp: 93643814</p>
+                <p>Email: Micronboy632@gmail.com</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Login Card */}
+        <Card className="w-full max-w-[400px] bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm shadow-xl transition-colors duration-300">
           <CardHeader className="text-center p-4 sm:p-6">
             <h1 className="text-xl sm:text-2xl font-bold text-primary mb-2 dark:text-white">
-              Welcome to the Laboratory Equipment Management Platform in Oman
+              Sign In
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              One health approach, equipment management
+              Access your laboratory management dashboard
             </p>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
