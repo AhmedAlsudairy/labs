@@ -22,25 +22,44 @@ export default function Login({ searchParams }: { searchParams: Message }) {
         <div className="w-full max-w-[600px] text-white">
           <div className="bg-black/30 backdrop-blur-sm p-6 rounded-lg">
             <h2 className="text-2xl font-bold mb-4">Laboratory Equipment Management Platform in Oman</h2>
-            <p className="mb-4">A comprehensive solution supporting human, animal, and food laboratories in Oman.</p>
+            <p className="mb-4">
+              A complete solution that supports human, animal, and food laboratories in Oman. 
+              The platform simplifies equipment maintenance, calibration, and External Quality Control (EQC) 
+              while recording downtime to improve work efficiency.
+            </p>
             
             <h3 className="text-xl font-semibold mb-2">Key Benefits:</h3>
-            <ul className="list-disc list-inside mb-4 space-y-1">
-              <li>Compliance with ISO 17025 Standards</li>
-              <li>Automated Maintenance & Calibration</li>
-              <li>EQC Integration</li>
-              <li>Downtime Reporting</li>
-              <li>Supervisors' Dashboard</li>
+            <ul className="list-disc list-inside mb-4 space-y-2">
+              <li>
+                <span className="font-semibold">Compliance with Standards:</span> Ensures adherence to quality 
+                standards like ISO 17025 for accurate and reliable results.
+              </li>
+              <li>
+                <span className="font-semibold">Automated Maintenance & Calibration:</span> Makes scheduling 
+                and reminders for routine tasks easier.
+              </li>
+              <li>
+                <span className="font-semibold">EQC Integration:</span> Tracks and records quality control 
+                activities to ensure test accuracy.
+              </li>
+              <li>
+                <span className="font-semibold">Downtime Reporting:</span> Logs equipment issues to reduce 
+                interruptions and speed up repairs.
+              </li>
+              <li>
+                <span className="font-semibold">Supervisors' Dashboard:</span> Helps lab coordinators in each 
+                governorate monitor and manage laboratory operations efficiently.
+              </li>
             </ul>
 
-            <div className="mt-6 text-right" dir="rtl">
-              <h2 className="text-2xl font-bold mb-4">منصة إدارة المعدات المخبرية في عُمان</h2>
-              <p className="mb-4">حل شامل يدعم مختبرات الإنسان والحيوان والغذاء في عُمان</p>
-              
-              <div className="mt-4">
-                <p>للتواصل:</p>
-                <p>WhatsApp: 93643814</p>
-                <p>Email: Micronboy632@gmail.com</p>
+            <div className="mt-6 p-4 bg-white/10 rounded-lg">
+              <p className="mb-2">
+                If you think these features can improve equipment management in your lab, 
+                contact us to benefit from them:
+              </p>
+              <div className="flex flex-col gap-1">
+                <p>• WhatsApp: <a href="https://wa.me/93643814" className="text-blue-300 hover:underline">93643814</a></p>
+                <p>• Email: <a href="mailto:Micronboy632@gmail.com" className="text-blue-300 hover:underline">Micronboy632@gmail.com</a></p>
               </div>
             </div>
           </div>
