@@ -67,10 +67,10 @@ export default function LaboratoryPage() {
         ]);
 
       // First set basic data
-      const equipmentList = equipmentUsage.map((eu) => ({
+      const equipmentList: Equipment[] = equipmentUsage.map((eu) => ({
         id: eu.id,
         name: eu.name,
-        status: eu.status,
+        status: eu.status === 'Operational' ? 'Operational' : 'Out of Service',
         model: eu.model || '',
         serialNumber: eu.serialNumber || '',
         description: eu.description || '',
@@ -80,8 +80,8 @@ export default function LaboratoryPage() {
         receiptDate: eu.receiptDate || '',
         supplier: eu.supplier || '',
         type: eu.type || '',
-        calibrationState: eu.calibrationState || 'none',
-        maintenanceState: eu.maintenanceState || 'done',
+        calibrationState: (eu.calibrationState as Equipment['calibrationState']) || 'none',
+        maintenanceState: (eu.maintenanceState as Equipment['maintenanceState']) || 'done',
       }));
 
       // Get all equipment IDs
