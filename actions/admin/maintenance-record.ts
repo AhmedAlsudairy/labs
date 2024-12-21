@@ -90,13 +90,18 @@ export async function updateMaintenanceRecord(
     };
   }
   
-  export async function getMaintenanceRecords(equipmentId: number): Promise<MaintenanceRecord[]> {
+  export async function getMaintenanceRecords(labId: number): Promise<MaintenanceRecord[]> {
     const { data, error } = await supabase
       .from('maintenance_schedule')
-      .select('*')
-      .eq('equipment_id', equipmentId);
-  
-    if (error) throw error;
+      .select('*, equipment:equipment_id(lab_id)')
+      .eq('equipment.lab_id', labId);
+
+    if (error) {
+      console.error('Error fetching maintenance records:', error);
+      throw error;
+    }
+
+    console.log('Raw maintenance records:', data);
     
     return data.map(record => ({
       id: record.schedule_id,
@@ -104,7 +109,7 @@ export async function updateMaintenanceRecord(
       equipmentId: record.equipment_id,
       state: record.state,
       responsible: record.responsible,
-      description: record.description || 'Scheduled maintenance', // Fallback if description is null
+      description: record.description || 'Scheduled maintenance',
       frequency: record.frequency
     }));
   }
@@ -119,13 +124,55 @@ export async function updateMaintenanceRecord(
     return count || 0;
   }
 
-  export async function getNeedMaintenanceCount(equipmentId: number): Promise<number> {
-    const { count, error } = await supabase
-      .from('maintenance_schedule')
-      .select('*', { count: 'exact', head: true })
-      .eq('equipment_id', equipmentId)
-      .in('state', ['need maintenance', 'late maintenance']);
+  export async function getMaintenanceRecordsByState(equipmentIds: number[]) {
+    try {
+      console.log(`[Maintenance] Starting check for equipment IDs:`, equipmentIds);
+      
+      const { data, error } = await supabase
+        .from('maintenance_schedule')
+        .select('*')
+        .in('equipment_id', equipmentIds);
 
-    if (error) throw error;
-    return count || 0;
+      if (error) {
+        console.error(`[Maintenance] Database error:`, error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.log(`[Maintenance] No records found for equipment`);
+        return {};
+      }
+
+      const currentDate = new Date();
+      const results: { [key: number]: { needMaintenance: number; lateMaintenance: number } } = {};
+
+      // Initialize results for all equipment IDs
+      equipmentIds.forEach(id => {
+        results[id] = { needMaintenance: 0, lateMaintenance: 0 };
+      });
+
+      // Process all records at once
+      data.forEach(record => {
+        const nextDate = new Date(record.next_date);
+        const timeDiff = nextDate.getTime() - currentDate.getTime();
+        const daysUntilDue = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        
+        if (!results[record.equipment_id]) {
+          results[record.equipment_id] = { needMaintenance: 0, lateMaintenance: 0 };
+        }
+
+        if (daysUntilDue <= 7 && daysUntilDue > 0 && record.state !== 'done') {
+          results[record.equipment_id].needMaintenance++;
+        }
+
+        if (nextDate < currentDate && record.state !== 'done') {
+          results[record.equipment_id].lateMaintenance++;
+        }
+      });
+
+      return results;
+    } catch (error) {
+      console.error(`[Maintenance] Error processing:`, error);
+      throw error;
+    }
   }

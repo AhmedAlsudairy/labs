@@ -7,13 +7,11 @@ import { DataTable } from './DataTable';
 
 interface MaintenanceSectionProps {
   maintenanceRecords: MaintenanceRecord[];
-  calibrationRecords: MaintenanceRecord[];
   equipment: Equipment[];
   onAddMaintenanceRecord: (maintenanceData: Omit<MaintenanceRecord, 'id'>) => Promise<void>;
-  onAddCalibrationRecord: (calibrationData: Omit<MaintenanceRecord, 'id'>) => Promise<void>;
 }
 
-export const MaintenanceSection: React.FC<MaintenanceSectionProps> = ({ maintenanceRecords, calibrationRecords, equipment, onAddMaintenanceRecord, onAddCalibrationRecord }) => {
+export const MaintenanceSection: React.FC<MaintenanceSectionProps> = ({ maintenanceRecords, equipment, onAddMaintenanceRecord }) => {
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
 
   return (

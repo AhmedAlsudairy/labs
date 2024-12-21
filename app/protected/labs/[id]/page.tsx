@@ -27,20 +27,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IdCard } from "lucide-react";
 import { getLaboratoryById } from "@/actions/admin/lab";
 import { addEquipment, deleteEquipment, getEquipmentUsage, updateEquipment } from "@/actions/admin/equipments";
-import { addMaintenanceRecord, getMaintenanceRecords, getMaintenanceRecordCount, getNeedMaintenanceCount } from "@/actions/admin/maintenance-record";
-import { addCalibrationRecord, getCalibrationRecords, getCalibrationRecordCount, getNeedCalibrationCount } from "@/actions/admin/calibration";
+import { addMaintenanceRecord, getMaintenanceRecords, getMaintenanceRecordsByState } from "@/actions/admin/maintenance-record";
+import { getCalibrationRecords, getCalibrationRecordsByState } from "@/actions/admin/calibration";
 import { getStaff } from "@/actions/admin/user";
 
 type FullLaboratoryDetails = Laboratory & {
   equipment: Equipment[];
   staff: Staff[];
   maintenanceRecords: MaintenanceRecord[];
-  calibrationRecords: MaintenanceRecord[];
+  calibrationRecords: any[];
   equipmentUsage: EquipmentUsage[];
-  maintenanceCount: number;
-  calibrationCount: number;
-  needMaintenanceCount: number;
-  needCalibrationCount: number;
+  maintenanceStates: any;
+  calibrationStates: any;
+  totalRecords: number;
 };
 
 export default function LaboratoryPage() {
@@ -58,54 +57,72 @@ export default function LaboratoryPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [
-        lab,
-        equipmentUsage,
-        maintenanceRecords,
-        calibrationRecords,
-        staff,
-        maintenanceCount,
-        calibrationCount,
-        needMaintenanceCount,
-        needCalibrationCount
-      ] = await Promise.all([
-        getLaboratoryById(labId),
-        getEquipmentUsage(labId),
-        getMaintenanceRecords(labId),
-        getCalibrationRecords(labId),
-        getStaff(labId),
-        getMaintenanceRecordCount(labId),
-        getCalibrationRecordCount(labId),
-        getNeedMaintenanceCount(labId),
-        getNeedCalibrationCount(labId)
+      const [lab, equipmentUsage, maintenanceRecords, staff, calibrationRecords] =
+        await Promise.all([
+          getLaboratoryById(labId),
+          getEquipmentUsage(labId),
+          getMaintenanceRecords(labId),
+          getStaff(labId),
+          getCalibrationRecords(labId),
+        ]);
+
+      // First set basic data
+      const equipmentList = equipmentUsage.map((eu) => ({
+        id: eu.id,
+        name: eu.name,
+        status: eu.status,
+        model: eu.model || '',
+        serialNumber: eu.serialNumber || '',
+        description: eu.description || '',
+        labSection: eu.labSection || '',
+        manufacturer: eu.manufacturer || '',
+        manufactureDate: eu.manufactureDate || '',
+        receiptDate: eu.receiptDate || '',
+        supplier: eu.supplier || '',
+        type: eu.type || '',
+        calibrationState: eu.calibrationState || 'none',
+        maintenanceState: eu.maintenanceState || 'done',
+      }));
+
+      // Get all equipment IDs
+      const equipmentIds = equipmentList.map(eq => eq.id);
+
+      // Fetch states for all equipment in one go
+      const [maintenanceStates, calibrationStates] = await Promise.all([
+        getMaintenanceRecordsByState(equipmentIds),
+        getCalibrationRecordsByState(equipmentIds),
       ]);
+
+      // Calculate totals
+      const totalMaintenanceStates = {
+        needMaintenance: Object.values(maintenanceStates).reduce((acc, curr) => acc + curr.needMaintenance, 0),
+        lateMaintenance: Object.values(maintenanceStates).reduce((acc, curr) => acc + curr.lateMaintenance, 0)
+      };
+
+      const totalCalibrationStates = {
+        needCalibration: Object.values(calibrationStates).reduce((acc, curr) => acc + curr.needCalibration, 0),
+        lateCalibration: Object.values(calibrationStates).reduce((acc, curr) => acc + curr.lateCalibration, 0)
+      };
+
+      // Calculate total records (maintenance + calibration)
+      const totalRecords = (maintenanceRecords?.length || 0) + (calibrationRecords?.length || 0);
+
+      console.log('Total maintenance records:', maintenanceRecords?.length || 0);
+      console.log('Total calibration records:', calibrationRecords?.length || 0);
+      console.log('Combined total records:', totalRecords);
+      console.log('Total maintenance states:', totalMaintenanceStates);
+      console.log('Total calibration states:', totalCalibrationStates);
 
       setLabData({
         ...lab,
         equipmentUsage,
         maintenanceRecords,
         calibrationRecords,
-        maintenanceCount,
-        calibrationCount,
-        needMaintenanceCount,
-        needCalibrationCount,
         staff,
-        equipment: equipmentUsage.map((eu) => ({
-          id: eu.id,
-          name: eu.name,
-          status: eu.status,
-          model: eu.model || '',
-          serialNumber: eu.serialNumber || '',
-          description: eu.description || '',
-          labSection: eu.labSection || '',
-          manufacturer: eu.manufacturer || '',
-          manufactureDate: eu.manufactureDate || '',
-          receiptDate: eu.receiptDate || '',
-          supplier: eu.supplier || '',
-          type: eu.type || '',
-          calibrationState: eu.calibrationState || 'none',
-          maintenanceState: eu.maintenanceState || 'done',
-        })),
+        equipment: equipmentList,
+        maintenanceStates: totalMaintenanceStates,
+        calibrationStates: totalCalibrationStates,
+        totalRecords,
       });
     } catch (error) {
       console.error("Error fetching laboratory data:", error);
@@ -201,27 +218,6 @@ export default function LaboratoryPage() {
     }
   };
 
-  const handleCalibrationSubmit = async (
-    calibrationData: Omit<MaintenanceRecord, "id">
-  ): Promise<void> => {
-    try {
-      await addCalibrationRecord(calibrationData);
-      await fetchLabData();
-      toast({
-        title: "Success",
-        description: "Calibration record added successfully.",
-      });
-    } catch (error) {
-      console.error("Error adding calibration record:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add calibration record. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -277,10 +273,11 @@ export default function LaboratoryPage() {
                 activeEquipmentCount={
                   labData.equipment.filter((eq) => eq.status === "Operational").length
                 }
-                maintenanceRecordCount={labData.maintenanceCount}
-                calibrationRecordCount={labData.calibrationCount}
-                needMaintenanceCount={labData.needMaintenanceCount}
-                needCalibrationCount={labData.needCalibrationCount}
+                maintenanceRecordCount={labData.totalRecords}
+                needMaintenance={labData.maintenanceStates.needMaintenance}
+                lateMaintenance={labData.maintenanceStates.lateMaintenance}
+                needCalibration={labData.calibrationStates.needCalibration}
+                lateCalibration={labData.calibrationStates.lateCalibration}
               />
             </div>
 
@@ -316,8 +313,8 @@ export default function LaboratoryPage() {
               />
 
               {/* Staff Section */}
-              <StaffSection
-                staff={labData.staff}
+              <StaffSection 
+                staff={labData.staff} 
                 labId={labId}
                 onStaffUpdated={fetchLabData}
               />
@@ -325,10 +322,8 @@ export default function LaboratoryPage() {
               {/* Maintenance Section */}
               <MaintenanceSection
                 maintenanceRecords={labData.maintenanceRecords}
-                calibrationRecords={labData.calibrationRecords}
                 equipment={labData.equipment}
                 onAddMaintenanceRecord={handleMaintenanceSubmit}
-                onAddCalibrationRecord={handleCalibrationSubmit}
               />
             </div>
           </div>
@@ -356,14 +351,4 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
       </div>
     </div>
   );
-}
-
-// Add these types if not already defined
-interface ChartData {
-  labels: string[];
-  datasets: {
-    label: string;
-    data: number[];
-    backgroundColor: string[];
-  }[];
 }

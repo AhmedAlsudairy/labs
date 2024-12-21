@@ -1,32 +1,34 @@
 // components/laboratory/StatCards.tsx
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Users, Microscope, ClipboardList, Ruler, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Building2, Users, Microscope, ClipboardList, AlertCircle, AlertTriangle } from 'lucide-react';
 
 interface StatCardsProps {
   equipmentCount: number;
   staffCount: number;
   activeEquipmentCount: number;
   maintenanceRecordCount: number;
-  calibrationRecordCount: number;
-  needMaintenanceCount: number;
-  needCalibrationCount: number;
+  needMaintenance: number;
+  lateMaintenance: number;
+  needCalibration: number;
+  lateCalibration: number;
 }
 
-export const StatCards: React.FC<StatCardsProps> = ({ 
-  equipmentCount, 
-  staffCount, 
-  activeEquipmentCount, 
+export const StatCards: React.FC<StatCardsProps> = ({
+  equipmentCount,
+  staffCount,
+  activeEquipmentCount,
   maintenanceRecordCount,
-  calibrationRecordCount,
-  needMaintenanceCount,
-  needCalibrationCount
+  needMaintenance,
+  lateMaintenance,
+  needCalibration,
+  lateCalibration
 }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 mb-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
     <StatCard 
       icon={<Building2 size={48} className="text-blue-500 mb-2" />} 
       value={equipmentCount} 
-      label="Equipment" 
+      label="Total Equipment" 
     />
     <StatCard 
       icon={<Users size={48} className="text-green-500 mb-2" />} 
@@ -39,24 +41,29 @@ export const StatCards: React.FC<StatCardsProps> = ({
       label="Active Equipment" 
     />
     <StatCard 
-      icon={<ClipboardList size={48} className="text-red-500 mb-2" />} 
+      icon={<ClipboardList size={48} className="text-purple-500 mb-2" />} 
       value={maintenanceRecordCount} 
-      label="Maintenance Records" 
+      label="Total Records" 
     />
     <StatCard 
-      icon={<Ruler size={48} className="text-purple-500 mb-2" />} 
-      value={calibrationRecordCount} 
-      label="Calibration Records" 
-    />
-    <StatCard 
-      icon={<AlertTriangle size={48} className="text-orange-500 mb-2" />} 
-      value={needMaintenanceCount} 
+      icon={<AlertCircle size={48} className="text-orange-500 mb-2" />} 
+      value={needMaintenance} 
       label="Need Maintenance" 
     />
     <StatCard 
-      icon={<AlertCircle size={48} className="text-red-500 mb-2" />} 
-      value={needCalibrationCount} 
+      icon={<AlertTriangle size={48} className="text-red-500 mb-2" />} 
+      value={lateMaintenance} 
+      label="Late Maintenance" 
+    />
+    <StatCard 
+      icon={<AlertCircle size={48} className="text-orange-500 mb-2" />} 
+      value={needCalibration} 
       label="Need Calibration" 
+    />
+    <StatCard 
+      icon={<AlertTriangle size={48} className="text-red-500 mb-2" />} 
+      value={lateCalibration} 
+      label="Late Calibration" 
     />
   </div>
 );
