@@ -1,6 +1,5 @@
 'use server';
 
-
 import { MaintenanceRecord } from "@/types";
 import { calculateNextDate } from "@/utils/utils";
 
@@ -60,7 +59,28 @@ export async function addCalibrationRecord(
       frequency: record.frequency
     }));
   }
-  
+
+  export async function getCalibrationRecordCount(equipmentId: number): Promise<number> {
+    const { count, error } = await supabase
+      .from('calibration_schedule')
+      .select('*', { count: 'exact', head: true })
+      .eq('equipment_id', equipmentId);
+
+    if (error) throw error;
+    return count || 0;
+  }
+
+  export async function getNeedCalibrationCount(equipmentId: number): Promise<number> {
+    const { count, error } = await supabase
+      .from('calibration_schedule')
+      .select('*', { count: 'exact', head: true })
+      .eq('equipment_id', equipmentId)
+      .in('state', ['need calibration', 'late calibration']);
+
+    if (error) throw error;
+    return count || 0;
+  }
+
   // Update calibration record
   export async function updateCalibrationRecord(
     recordId: number, 

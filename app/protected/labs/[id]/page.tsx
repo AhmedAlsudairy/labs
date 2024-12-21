@@ -27,14 +27,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IdCard } from "lucide-react";
 import { getLaboratoryById } from "@/actions/admin/lab";
 import { addEquipment, deleteEquipment, getEquipmentUsage, updateEquipment } from "@/actions/admin/equipments";
-import { addMaintenanceRecord, getMaintenanceRecords } from "@/actions/admin/maintenance-record";
+import { addMaintenanceRecord, getMaintenanceRecords, getMaintenanceRecordCount, getNeedMaintenanceCount } from "@/actions/admin/maintenance-record";
+import { addCalibrationRecord, getCalibrationRecords, getCalibrationRecordCount, getNeedCalibrationCount } from "@/actions/admin/calibration";
 import { getStaff } from "@/actions/admin/user";
 
 type FullLaboratoryDetails = Laboratory & {
   equipment: Equipment[];
   staff: Staff[];
   maintenanceRecords: MaintenanceRecord[];
+  calibrationRecords: MaintenanceRecord[];
   equipmentUsage: EquipmentUsage[];
+  maintenanceCount: number;
+  calibrationCount: number;
+  needMaintenanceCount: number;
+  needCalibrationCount: number;
 };
 
 export default function LaboratoryPage() {
@@ -52,18 +58,37 @@ export default function LaboratoryPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [lab, equipmentUsage, maintenanceRecords, staff] =
-        await Promise.all([
-          getLaboratoryById(labId),
-          getEquipmentUsage(labId),
-          getMaintenanceRecords(labId),
-          getStaff(labId),
-        ]);
+      const [
+        lab,
+        equipmentUsage,
+        maintenanceRecords,
+        calibrationRecords,
+        staff,
+        maintenanceCount,
+        calibrationCount,
+        needMaintenanceCount,
+        needCalibrationCount
+      ] = await Promise.all([
+        getLaboratoryById(labId),
+        getEquipmentUsage(labId),
+        getMaintenanceRecords(labId),
+        getCalibrationRecords(labId),
+        getStaff(labId),
+        getMaintenanceRecordCount(labId),
+        getCalibrationRecordCount(labId),
+        getNeedMaintenanceCount(labId),
+        getNeedCalibrationCount(labId)
+      ]);
 
       setLabData({
         ...lab,
         equipmentUsage,
         maintenanceRecords,
+        calibrationRecords,
+        maintenanceCount,
+        calibrationCount,
+        needMaintenanceCount,
+        needCalibrationCount,
         staff,
         equipment: equipmentUsage.map((eu) => ({
           id: eu.id,
@@ -79,7 +104,7 @@ export default function LaboratoryPage() {
           supplier: eu.supplier || '',
           type: eu.type || '',
           calibrationState: eu.calibrationState || 'none',
-          maintenanceState: eu.maintenanceState ||'done',
+          maintenanceState: eu.maintenanceState || 'done',
         })),
       });
     } catch (error) {
@@ -94,7 +119,6 @@ export default function LaboratoryPage() {
       setIsLoading(false);
     }
   };
-
 
   const handleEquipmentSubmit = async (equipmentData: CreateEquipmentInput): Promise<void> => {
     try {
@@ -115,8 +139,6 @@ export default function LaboratoryPage() {
     }
   };
 
-
-  
   const handleEquipmentEdit = async (
     equipmentId: number,
     equipmentData: Partial<Equipment>
@@ -179,6 +201,27 @@ export default function LaboratoryPage() {
     }
   };
 
+  const handleCalibrationSubmit = async (
+    calibrationData: Omit<MaintenanceRecord, "id">
+  ): Promise<void> => {
+    try {
+      await addCalibrationRecord(calibrationData);
+      await fetchLabData();
+      toast({
+        title: "Success",
+        description: "Calibration record added successfully.",
+      });
+    } catch (error) {
+      console.error("Error adding calibration record:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add calibration record. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -234,7 +277,10 @@ export default function LaboratoryPage() {
                 activeEquipmentCount={
                   labData.equipment.filter((eq) => eq.status === "Operational").length
                 }
-                maintenanceRecordCount={labData.maintenanceRecords.length}
+                maintenanceRecordCount={labData.maintenanceCount}
+                calibrationRecordCount={labData.calibrationCount}
+                needMaintenanceCount={labData.needMaintenanceCount}
+                needCalibrationCount={labData.needCalibrationCount}
               />
             </div>
 
@@ -270,8 +316,8 @@ export default function LaboratoryPage() {
               />
 
               {/* Staff Section */}
-              <StaffSection 
-                staff={labData.staff} 
+              <StaffSection
+                staff={labData.staff}
                 labId={labId}
                 onStaffUpdated={fetchLabData}
               />
@@ -279,8 +325,10 @@ export default function LaboratoryPage() {
               {/* Maintenance Section */}
               <MaintenanceSection
                 maintenanceRecords={labData.maintenanceRecords}
+                calibrationRecords={labData.calibrationRecords}
                 equipment={labData.equipment}
                 onAddMaintenanceRecord={handleMaintenanceSubmit}
+                onAddCalibrationRecord={handleCalibrationSubmit}
               />
             </div>
           </div>
@@ -289,8 +337,6 @@ export default function LaboratoryPage() {
     </div>
   );
 }
-
-
 
 // Error State Component
 interface ErrorStateProps {

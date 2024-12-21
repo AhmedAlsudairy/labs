@@ -108,4 +108,24 @@ export async function updateMaintenanceRecord(
       frequency: record.frequency
     }));
   }
-  
+
+  export async function getMaintenanceRecordCount(equipmentId: number): Promise<number> {
+    const { count, error } = await supabase
+      .from('maintenance_schedule')
+      .select('*', { count: 'exact', head: true })
+      .eq('equipment_id', equipmentId);
+
+    if (error) throw error;
+    return count || 0;
+  }
+
+  export async function getNeedMaintenanceCount(equipmentId: number): Promise<number> {
+    const { count, error } = await supabase
+      .from('maintenance_schedule')
+      .select('*', { count: 'exact', head: true })
+      .eq('equipment_id', equipmentId)
+      .in('state', ['need maintenance', 'late maintenance']);
+
+    if (error) throw error;
+    return count || 0;
+  }
