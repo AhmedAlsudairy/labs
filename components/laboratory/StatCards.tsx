@@ -8,65 +8,74 @@ interface StatCardsProps {
   staffCount: number;
   activeEquipmentCount: number;
   maintenanceRecordCount: number;
+  calibrationRecordCount: number;
   needMaintenance: number;
   lateMaintenance: number;
   needCalibration: number;
   lateCalibration: number;
 }
 
-export const StatCards: React.FC<StatCardsProps> = ({
+export function StatCards({
   equipmentCount,
   staffCount,
   activeEquipmentCount,
   maintenanceRecordCount,
+  calibrationRecordCount,
   needMaintenance,
   lateMaintenance,
   needCalibration,
-  lateCalibration
-}) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-    <StatCard 
-      icon={<Building2 size={48} className="text-blue-500 mb-2" />} 
-      value={equipmentCount} 
-      label="Total Equipment" 
-    />
-    <StatCard 
-      icon={<Users size={48} className="text-green-500 mb-2" />} 
-      value={staffCount} 
-      label="Staff Members" 
-    />
-    <StatCard 
-      icon={<Microscope size={48} className="text-yellow-500 mb-2" />} 
-      value={activeEquipmentCount} 
-      label="Active Equipment" 
-    />
-    <StatCard 
-      icon={<ClipboardList size={48} className="text-purple-500 mb-2" />} 
-      value={maintenanceRecordCount} 
-      label="Total Records" 
-    />
-    <StatCard 
-      icon={<AlertCircle size={48} className="text-orange-500 mb-2" />} 
-      value={needMaintenance} 
-      label="Need Maintenance" 
-    />
-    <StatCard 
-      icon={<AlertTriangle size={48} className="text-red-500 mb-2" />} 
-      value={lateMaintenance} 
-      label="Late Maintenance" 
-    />
-    <StatCard 
-      icon={<AlertCircle size={48} className="text-orange-500 mb-2" />} 
-      value={needCalibration} 
-      label="Need Calibration" 
-    />
-    <StatCard 
-      icon={<AlertTriangle size={48} className="text-red-500 mb-2" />} 
-      value={lateCalibration} 
-      label="Late Calibration" 
-    />
-  </div>
-);
+  lateCalibration,
+}: StatCardsProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <StatCard 
+        icon={<Building2 size={48} className="text-blue-500 mb-2" />} 
+        value={equipmentCount} 
+        label="Total Equipment" 
+      />
+      <StatCard 
+        icon={<Users size={48} className="text-green-500 mb-2" />} 
+        value={staffCount} 
+        label="Staff Members" 
+      />
+      <StatCard 
+        icon={<Microscope size={48} className="text-yellow-500 mb-2" />} 
+        value={activeEquipmentCount} 
+        label="Active Equipment" 
+      />
+      <StatCard 
+        icon={<ClipboardList size={48} className="text-purple-500 mb-2" />} 
+        value={maintenanceRecordCount} 
+        label="Total Maintenance Records" 
+      />
+      <StatCard 
+        icon={<ClipboardList size={48} className="text-purple-500 mb-2" />} 
+        value={calibrationRecordCount} 
+        label="Total Calibration Records" 
+      />
+      <StatCard 
+        icon={<AlertCircle size={48} className="text-orange-500 mb-2" />} 
+        value={needMaintenance} 
+        label="Need Maintenance" 
+      />
+      <StatCard 
+        icon={<AlertTriangle size={48} className="text-red-500 mb-2" />} 
+        value={lateMaintenance} 
+        label="Late Maintenance" 
+      />
+      <StatCard 
+        icon={<AlertCircle size={48} className="text-orange-500 mb-2" />} 
+        value={needCalibration} 
+        label="Need Calibration" 
+      />
+      <StatCard 
+        icon={<AlertTriangle size={48} className="text-red-500 mb-2" />} 
+        value={lateCalibration} 
+        label="Late Calibration" 
+      />
+    </div>
+  );
+}
 
 interface StatCardProps {
   icon: React.ReactNode;

@@ -90,28 +90,121 @@ export async function updateMaintenanceRecord(
     };
   }
   
-  export async function getMaintenanceRecords(labId: number): Promise<MaintenanceRecord[]> {
-    const { data, error } = await supabase
-      .from('maintenance_schedule')
-      .select('*, equipment:equipment_id(lab_id)')
-      .eq('equipment.lab_id', labId);
-
-    if (error) {
-      console.error('Error fetching maintenance records:', error);
-      throw error;
+  export async function getMaintenanceRecords(id: number, mode: 'lab' | 'equipment' = 'lab'): Promise<MaintenanceRecord[]> {
+    if (!id) {
+      console.error('No ID provided');
+      return [];
     }
 
-    console.log('Raw maintenance records:', data);
-    
-    return data.map(record => ({
-      id: record.schedule_id,
-      date: record.next_date,
-      equipmentId: record.equipment_id,
-      state: record.state,
-      responsible: record.responsible,
-      description: record.description || 'Scheduled maintenance',
-      frequency: record.frequency
-    }));
+    try {
+      if (mode === 'lab') {
+        console.log('Fetching maintenance records for lab:', id);
+
+        // First get equipment IDs for this lab
+        const { data: equipment, error: equipmentError } = await supabase
+          .from('equipment')
+          .select('equipment_id')
+          .eq('lab_id', id);
+
+        if (equipmentError) {
+          console.error('Error fetching equipment:', equipmentError);
+          return [];
+        }
+
+        if (!equipment || equipment.length === 0) {
+          console.log('No equipment found for lab:', id);
+          return [];
+        }
+
+        const equipmentIds = equipment.map(e => e.equipment_id);
+        console.log('Found equipment IDs:', equipmentIds);
+
+        // Get maintenance records for these equipment
+        const { data: records, error: recordsError } = await supabase
+          .from('maintenance_schedule')
+          .select(`
+            schedule_id,
+            next_date,
+            equipment_id,
+            state,
+            responsible,
+            description,
+            frequency
+          `)
+          .in('equipment_id', equipmentIds);
+
+        if (recordsError) {
+          console.error('Error fetching maintenance records:', recordsError);
+          return [];
+        }
+
+        if (!records) {
+          console.log('No maintenance records found for lab');
+          return [];
+        }
+
+        console.log('Found maintenance records:', records);
+
+        const maintenanceRecords = records.map(record => ({
+          id: record.schedule_id,
+          date: record.next_date,
+          equipmentId: record.equipment_id,
+          state: record.state || 'pending',
+          responsible: record.responsible || '',
+          description: record.description || 'Scheduled maintenance',
+          frequency: record.frequency || 'monthly',
+          type: 'maintenance' as const
+        }));
+
+        console.log('Processed maintenance records:', maintenanceRecords);
+        return maintenanceRecords;
+
+      } else {
+        console.log('Fetching maintenance records for equipment:', id);
+
+        const { data: records, error } = await supabase
+          .from('maintenance_schedule')
+          .select(`
+            schedule_id,
+            next_date,
+            equipment_id,
+            state,
+            responsible,
+            description,
+            frequency
+          `)
+          .eq('equipment_id', id);
+
+        if (error) {
+          console.error('Error fetching maintenance records:', error);
+          return [];
+        }
+
+        if (!records) {
+          console.log('No maintenance records found for equipment:', id);
+          return [];
+        }
+
+        console.log('Found maintenance records:', records);
+
+        const maintenanceRecords = records.map(record => ({
+          id: record.schedule_id,
+          date: record.next_date,
+          equipmentId: record.equipment_id,
+          state: record.state || 'pending',
+          responsible: record.responsible || '',
+          description: record.description || 'Scheduled maintenance',
+          frequency: record.frequency || 'monthly',
+          type: 'maintenance' as const
+        }));
+
+        console.log('Processed maintenance records:', maintenanceRecords);
+        return maintenanceRecords;
+      }
+    } catch (error) {
+      console.error('Error in getMaintenanceRecords:', error);
+      return [];
+    }
   }
 
   export async function getMaintenanceRecordCount(equipmentId: number): Promise<number> {

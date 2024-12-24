@@ -31,14 +31,18 @@ import { addMaintenanceRecord, getMaintenanceRecords, getMaintenanceRecordsBySta
 import { getCalibrationRecords, getCalibrationRecordsByState } from "@/actions/admin/calibration";
 import { getStaff } from "@/actions/admin/user";
 
+type RecordWithType = MaintenanceRecord & { type: 'maintenance' | 'calibration' };
+
 type FullLaboratoryDetails = Laboratory & {
   equipment: Equipment[];
   staff: Staff[];
-  maintenanceRecords: MaintenanceRecord[];
-  calibrationRecords: any[];
+  maintenanceRecords: RecordWithType[];
+  calibrationRecords: RecordWithType[];
   equipmentUsage: EquipmentUsage[];
   maintenanceStates: any;
   calibrationStates: any;
+  totalMaintenanceRecords: number;
+  totalCalibrationRecords: number;
   totalRecords: number;
 };
 
@@ -57,14 +61,23 @@ export default function LaboratoryPage() {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('Fetching data for lab ID:', labId);
+
+      // Fetch all required data
       const [lab, equipmentUsage, maintenanceRecords, staff, calibrationRecords] =
         await Promise.all([
           getLaboratoryById(labId),
           getEquipmentUsage(labId),
-          getMaintenanceRecords(labId),
+          getMaintenanceRecords(labId, 'lab'),
           getStaff(labId),
-          getCalibrationRecords(labId),
+          getCalibrationRecords(labId, 'lab'),
         ]);
+
+      console.log('Lab data:', lab);
+      console.log('Equipment usage:', equipmentUsage);
+      console.log('Maintenance records:', maintenanceRecords);
+      console.log('Staff:', staff);
+      console.log('Calibration records:', calibrationRecords);
 
       // First set basic data
       const equipmentList: Equipment[] = equipmentUsage.map((eu) => ({
@@ -84,14 +97,20 @@ export default function LaboratoryPage() {
         maintenanceState: (eu.maintenanceState as Equipment['maintenanceState']) || 'done',
       }));
 
+      console.log('Processed equipment list:', equipmentList);
+
       // Get all equipment IDs
       const equipmentIds = equipmentList.map(eq => eq.id);
+      console.log('Equipment IDs for state fetch:', equipmentIds);
 
       // Fetch states for all equipment in one go
       const [maintenanceStates, calibrationStates] = await Promise.all([
         getMaintenanceRecordsByState(equipmentIds),
         getCalibrationRecordsByState(equipmentIds),
       ]);
+
+      console.log('Maintenance states:', maintenanceStates);
+      console.log('Calibration states:', calibrationStates);
 
       // Calculate totals
       const totalMaintenanceStates = {
@@ -104,26 +123,45 @@ export default function LaboratoryPage() {
         lateCalibration: Object.values(calibrationStates).reduce((acc, curr) => acc + curr.lateCalibration, 0)
       };
 
-      // Calculate total records (maintenance + calibration)
-      const totalRecords = (maintenanceRecords?.length || 0) + (calibrationRecords?.length || 0);
-
-      console.log('Total maintenance records:', maintenanceRecords?.length || 0);
-      console.log('Total calibration records:', calibrationRecords?.length || 0);
-      console.log('Combined total records:', totalRecords);
       console.log('Total maintenance states:', totalMaintenanceStates);
       console.log('Total calibration states:', totalCalibrationStates);
 
-      setLabData({
+      // Calculate total records for each type
+      const totalMaintenanceRecords = maintenanceRecords.length;
+      const totalCalibrationRecords = calibrationRecords.length;
+
+      console.log('Total maintenance records:', totalMaintenanceRecords);
+      console.log('Total calibration records:', totalCalibrationRecords);
+      console.log('Combined total records:', totalMaintenanceRecords + totalCalibrationRecords);
+
+      const processedMaintenanceRecords = maintenanceRecords.map(record => ({
+        ...record,
+        type: 'maintenance' as const
+      }));
+      const processedCalibrationRecords = calibrationRecords.map(record => ({
+        ...record,
+        type: 'calibration' as const
+      }));
+
+      console.log('Processed maintenance records:', processedMaintenanceRecords);
+      console.log('Processed calibration records:', processedCalibrationRecords);
+
+      const labDataToSet = {
         ...lab,
         equipmentUsage,
-        maintenanceRecords,
-        calibrationRecords,
+        maintenanceRecords: processedMaintenanceRecords,
+        calibrationRecords: processedCalibrationRecords,
         staff,
         equipment: equipmentList,
         maintenanceStates: totalMaintenanceStates,
         calibrationStates: totalCalibrationStates,
-        totalRecords,
-      });
+        totalMaintenanceRecords,
+        totalCalibrationRecords,
+        totalRecords: totalMaintenanceRecords + totalCalibrationRecords,
+      };
+
+      console.log('Setting lab data:', labDataToSet);
+      setLabData(labDataToSet);
     } catch (error) {
       console.error("Error fetching laboratory data:", error);
       setError("Failed to fetch laboratory data. Please try again.");
@@ -273,7 +311,8 @@ export default function LaboratoryPage() {
                 activeEquipmentCount={
                   labData.equipment.filter((eq) => eq.status === "Operational").length
                 }
-                maintenanceRecordCount={labData.totalRecords}
+                maintenanceRecordCount={labData.totalMaintenanceRecords}
+                calibrationRecordCount={labData.totalCalibrationRecords}
                 needMaintenance={labData.maintenanceStates.needMaintenance}
                 lateMaintenance={labData.maintenanceStates.lateMaintenance}
                 needCalibration={labData.calibrationStates.needCalibration}

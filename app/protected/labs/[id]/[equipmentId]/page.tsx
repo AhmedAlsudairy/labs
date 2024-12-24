@@ -56,9 +56,7 @@ export default function EquipmentPage() {
   const { theme } = useTheme();
 
   const [equipment, setEquipment] = useState<Equipment | null>(null);
-  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>(
-    []
-  );
+  const [maintenanceRecords, setMaintenanceRecords] = useState<MaintenanceRecord[]>([]);
   const [externalControls, setExternalControls] = useState<ExternalControl[]>([]);
   const [calibrationData, setCalibrationData] = useState<CalibrationData[]>([]);
   const [downtimeRecords, setDowntimeRecords] = useState<any[]>([]);
@@ -80,9 +78,9 @@ export default function EquipmentPage() {
           downtimeData,
         ] = await Promise.all([
           getEquipmentById(equipmentId),
-          getMaintenanceRecords(equipmentId),
+          getMaintenanceRecords(equipmentId, 'equipment'),
           getExternalControls(equipmentId),
-          getCalibrationRecords(equipmentId),
+          getCalibrationRecords(equipmentId, 'equipment'),
           getDowntimeRecords(equipmentId),
         ]);
 

@@ -41,34 +41,127 @@ export async function addCalibrationRecord(
     };
   }
   
-  export async function getCalibrationRecords(labId: number): Promise<MaintenanceRecord[]> {
-    const { data, error } = await supabase
-      .from('calibration_schedule')
-      .select('*, equipment:equipment_id(lab_id)')
-      .eq('equipment.lab_id', labId);
-
-    if (error) {
-      console.error('Error fetching calibration records:', error);
-      throw error;
+  export async function getCalibrationRecords(id: number, mode: 'lab' | 'equipment' = 'lab'): Promise<MaintenanceRecord[]> {
+    if (!id) {
+      console.error('No ID provided');
+      return [];
     }
 
-    console.log('Raw calibration records:', data);
-    
-    return data.map(record => ({
-      id: record.calibration_schedule_id,
-      date: record.next_date,
-      equipmentId: record.equipment_id,
-      state: record.state,
-      responsible: record.responsible,
-      description: record.description || 'Scheduled calibration',
-      frequency: record.frequency
-    }));
+    try {
+      if (mode === 'lab') {
+        console.log('Fetching calibration records for lab:', id);
+
+        // First get equipment IDs for this lab
+        const { data: equipment, error: equipmentError } = await supabase
+          .from('equipment')
+          .select('equipment_id')
+          .eq('lab_id', id);
+
+        if (equipmentError) {
+          console.error('Error fetching equipment:', equipmentError);
+          return [];
+        }
+
+        if (!equipment || equipment.length === 0) {
+          console.log('No equipment found for lab:', id);
+          return [];
+        }
+
+        const equipmentIds = equipment.map(e => e.equipment_id);
+        console.log('Found equipment IDs:', equipmentIds);
+
+        // Get calibration records for these equipment
+        const { data: records, error: recordsError } = await supabase
+          .from('calibration_schedule')
+          .select(`
+            calibration_schedule_id,
+            next_date,
+            equipment_id,
+            state,
+            responsible,
+            description,
+            frequency
+          `)
+          .in('equipment_id', equipmentIds);
+
+        if (recordsError) {
+          console.error('Error fetching calibration records:', recordsError);
+          return [];
+        }
+
+        if (!records) {
+          console.log('No calibration records found for lab');
+          return [];
+        }
+
+        console.log('Found calibration records:', records);
+
+        const calibrationRecords = records.map(record => ({
+          id: record.calibration_schedule_id,
+          date: record.next_date,
+          equipmentId: record.equipment_id,
+          state: record.state || 'pending',
+          responsible: record.responsible || '',
+          description: record.description || 'Scheduled calibration',
+          frequency: record.frequency || 'monthly',
+          type: 'calibration' as const
+        }));
+
+        console.log('Processed calibration records:', calibrationRecords);
+        return calibrationRecords;
+
+      } else {
+        console.log('Fetching calibration records for equipment:', id);
+
+        const { data: records, error } = await supabase
+          .from('calibration_schedule')
+          .select(`
+            calibration_schedule_id,
+            next_date,
+            equipment_id,
+            state,
+            responsible,
+            description,
+            frequency
+          `)
+          .eq('equipment_id', id);
+
+        if (error) {
+          console.error('Error fetching calibration records:', error);
+          return [];
+        }
+
+        if (!records) {
+          console.log('No calibration records found for equipment:', id);
+          return [];
+        }
+
+        console.log('Found calibration records:', records);
+
+        const calibrationRecords = records.map(record => ({
+          id: record.calibration_schedule_id,
+          date: record.next_date,
+          equipmentId: record.equipment_id,
+          state: record.state || 'pending',
+          responsible: record.responsible || '',
+          description: record.description || 'Scheduled calibration',
+          frequency: record.frequency || 'monthly',
+          type: 'calibration' as const
+        }));
+
+        console.log('Processed calibration records:', calibrationRecords);
+        return calibrationRecords;
+      }
+    } catch (error) {
+      console.error('Error in getCalibrationRecords:', error);
+      return [];
+    }
   }
 
   export async function getCalibrationRecordCount(equipmentId: number): Promise<number> {
     const { count, error } = await supabase
       .from('calibration_schedule')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true})
       .eq('equipment_id', equipmentId);
 
     if (error) throw error;

@@ -6,6 +6,7 @@ import { TableCell, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { useState } from "react";
 import { MaintenanceHistoryTable } from "./maintenance-history-table";
+import { DescriptionModal } from "./description-modal";
 
 interface MaintenanceRecordRowProps {
   equipment_id: number;
@@ -14,7 +15,6 @@ interface MaintenanceRecordRowProps {
   record: MaintenanceRecord;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
-  onDescriptionClick: () => void;
   isEditing: boolean;
 }
 
@@ -25,10 +25,10 @@ export function MaintenanceRecordRow({
   record,
   onEdit,
   onDelete,
-  onDescriptionClick,
   isEditing,
 }: MaintenanceRecordRowProps) {
   const [showHistory, setShowHistory] = useState(false);
+  const [showDescription, setShowDescription] = useState(false);
 
   return (
     <>
@@ -51,7 +51,7 @@ export function MaintenanceRecordRow({
         </TableCell>
         <TableCell 
           className="dark:text-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 group"
-          onClick={onDescriptionClick}
+          onClick={() => setShowDescription(true)}
         >
           <div className="flex items-center gap-2">
             <span className="truncate max-w-[300px]">{record.description}</span>
@@ -99,6 +99,13 @@ export function MaintenanceRecordRow({
           </TableCell>
         </TableRow>
       )}
+
+      <DescriptionModal
+        isOpen={showDescription}
+        onClose={() => setShowDescription(false)}
+        title={`${mode === 'maintenance' ? 'Maintenance' : 'Calibration'} Description`}
+        description={record.description || 'No description available'}
+      />
     </>
   );
 }
@@ -123,7 +130,6 @@ export const StateIndicator = ({ state }: { state: maintanace_state }) => {
   );
 };
 
-// Add ActionButtons component
 interface ActionButtonsProps {
   recordId: number;
   onEdit: (id: number) => void;

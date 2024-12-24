@@ -14,10 +14,13 @@ interface MaintenanceSectionProps {
 export const MaintenanceSection: React.FC<MaintenanceSectionProps> = ({ maintenanceRecords, equipment, onAddMaintenanceRecord }) => {
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
 
+  console.log('MaintenanceSection - Received records:', maintenanceRecords);
+  console.log('MaintenanceSection - Received equipment:', equipment);
+
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Maintenance Records</CardTitle>
+        <CardTitle>Maintenance Records ({maintenanceRecords?.length || 0})</CardTitle>
       </CardHeader>
       <CardContent>
         <Button onClick={() => setShowMaintenanceForm(!showMaintenanceForm)} className="mb-4">
@@ -25,11 +28,22 @@ export const MaintenanceSection: React.FC<MaintenanceSectionProps> = ({ maintena
         </Button>
         {/* {showMaintenanceForm && (
           <MaintenanceForm onSubmit={onAddMaintenanceRecord} equipment={equipment} />
-        )}
-        <DataTable 
-          data={maintenanceRecords} 
-          columns={['Date', 'Equipment', 'Description']} 
-        /> */}
+        )} */}
+        <div className="mt-4">
+          {maintenanceRecords && maintenanceRecords.length > 0 ? (
+            <div>
+              {maintenanceRecords.map((record, index) => (
+                <div key={record.id || index} className="mb-2">
+                  <pre>{JSON.stringify(record, null, 2)}</pre>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-muted-foreground">
+              No maintenance records found
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
