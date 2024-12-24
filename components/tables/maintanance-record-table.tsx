@@ -21,7 +21,6 @@ import {
   PaginationItem,
   PaginationLink,
 } from "../ui/pagination";
-import { DescriptionModal } from "../ui/description-modal";
 
 interface MaintenanceRecordsProps {
   mode: "maintenance" | "calibration";
@@ -45,10 +44,6 @@ export function MaintenanceRecords({
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDescription, setSelectedDescription] = useState<{
-    title: string;
-    description: string;
-  } | null>(null);
   const itemsPerPage = 5;
 
   const handleDelete = async (id: number) => {
@@ -148,12 +143,6 @@ export function MaintenanceRecords({
                     onEdit={(id) => setEditingId(id === editingId ? null : id)}
                     onDelete={(id) => setRecordToDelete(id)}
                     isEditing={editingId === record.id}
-                    onDescriptionClick={() =>
-                      setSelectedDescription({
-                        title: `${mode === "maintenance" ? "Maintenance" : "Calibration"} Record Details`,
-                        description: record.description,
-                      })
-                    }
                   />
                   {editingId === record.id && (
                     <TableRow>
@@ -230,13 +219,6 @@ export function MaintenanceRecords({
           open={!!recordToDelete}
           onClose={() => setRecordToDelete(null)}
           onConfirm={() => recordToDelete && handleDelete(recordToDelete)}
-        />
-
-        <DescriptionModal
-          open={!!selectedDescription}
-          onClose={() => setSelectedDescription(null)}
-          title={selectedDescription?.title || ""}
-          description={selectedDescription?.description || ""}
         />
       </CardContent>
     </Card>
