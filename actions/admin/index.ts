@@ -14,21 +14,6 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 
-export async function getExternalControls(equipmentId: number): Promise<ExternalControl[]> {
-  const { data, error } = await supabase
-    .from('external_control')
-    .select('*')
-    .eq('device_id', equipmentId);
-
-  if (error) throw error;
-  return data.map(control => ({
-    id: control.control_id,
-    date: control.date,
-    result: control.result,
-    equipmentId: control.device_id,
-  }));
-}
-
 
 
 // actions/admin.ts

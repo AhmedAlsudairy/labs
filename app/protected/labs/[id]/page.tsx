@@ -359,11 +359,11 @@ export default function LaboratoryPage() {
               />
 
               {/* Maintenance Section */}
-              <MaintenanceSection
+              {/* <MaintenanceSection
                 maintenanceRecords={labData.maintenanceRecords}
                 equipment={labData.equipment}
                 onAddMaintenanceRecord={handleMaintenanceSubmit}
-              />
+              /> */}
             </div>
           </div>
         </div>

@@ -3,7 +3,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import { sendEmail } from '@/utils/resend/email';
-import { EquipmentHistory } from '@/types';
+import {   } from '@/types';
+import { ExternalControlState } from '@/lib/types';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,6 +65,18 @@ function determineCalibrationState(nextDate: Date): CalibrationState {
     return 'need calibration';
   }
   return 'calibrated';
+}
+
+function determineExternalControlState(nextDate: Date): ExternalControlState {
+  const today = new Date();
+  const daysDiff = (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  
+  if (daysDiff < 0) {
+    return 'E.Q.C Reception'; // Red - Late
+  } else if (daysDiff <= 7) {
+    return 'Final Date'; // Yellow - In date but close
+  }
+  return 'Done'; // Green - In date
 }
 
 // Helper function to check if a schedule was recently updated manually
@@ -206,6 +219,73 @@ export async function updateCalibrationSchedules() {
   }
 }
 
+export async function updateExternalControlSchedules(equipment_id?: number) {
+  const query = supabase
+    .from('external_control')
+    .select(`
+      *,
+      equipment:equipment_id (
+        equipment_id,
+        name,
+        laboratory:lab_id (
+          *
+        )
+      )
+    `);
+
+  // If equipment_id is provided, filter by it
+  if (equipment_id) {
+    query.eq('equipment_id', equipment_id);
+  }
+
+  const { data: externalControls, error: externalError } = await query;
+
+  if (externalError) {
+    console.error('Error fetching external control schedules:', externalError);
+    return;
+  }
+
+  for (const control of externalControls || []) {
+    // Skip if recently updated manually
+    if (control.updated_by === 'manual' && 
+        (control.state === 'Final Date' || control.state === 'E.Q.C Reception')) {
+      console.log(`Skipping external control ${control.control_id} - manually marked as ${control.state}`);
+      continue;
+    }
+
+    const nextDate = new Date(control.next_date);
+    const state = determineExternalControlState(nextDate);
+    
+    // Only update if state would change to Done or if it's an automatic update
+    let newNextDate = control.next_date;
+    if (control.updated_by !== 'manual' || state === 'Done') {
+      if (state === 'Done') {
+        newNextDate = calculateNextDate(new Date(), control.frequency);
+      }
+
+      const { error: updateError } = await supabase
+        .from('external_control')
+        .update({ 
+          state,
+          next_date: newNextDate,
+          last_updated: new Date().toISOString(),
+          updated_by: 'automatic'
+        })
+        .eq('control_id', control.control_id);
+
+      if (updateError) {
+        console.error('Error updating external control:', updateError);
+        continue;
+      }
+
+      // Send notifications only if state changed
+      if (state !== 'Done' && control.equipment?.laboratory?.manager_id) {
+        await sendExternalControlNotification(control, state, newNextDate);
+      }
+    }
+  }
+}
+
 // Helper function for maintenance notifications
 async function sendMaintenanceNotification(schedule: any, state: MaintenanceState, newNextDate: Date) {
   const { data: userData } = await supabase.auth
@@ -264,9 +344,45 @@ async function sendCalibrationNotification(schedule: any, state: CalibrationStat
   await sendEmail(emailContent);
 }
 
+// Helper function for external control notifications
+async function sendExternalControlNotification(control: any, state: ExternalControlState, newNextDate: Date) {
+  const { data: userData } = await supabase.auth
+    .admin.getUserById(control.equipment.laboratory.manager_id);
+
+  const { data: cordinator } = await supabase
+    .rpc('get_lab_matched_users', {
+      p_lab_id: control.equipment.laboratory.lab_id
+    });
+
+  const cordinator_email = cordinator?.[0]?.email;
+  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${control.equipment.laboratory.lab_id}/${control.equipment_id}`;
+  
+  const stateColors = {
+    'Done': 'green',
+    'Final Date': 'yellow',
+    'E.Q.C Reception': 'red'
+  };
+
+  const emailContent = {
+    to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+    title: `External Control Schedule Alert: ${state}`,
+    body: `
+      Equipment: ${control.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+      Current Status: <span style="color: ${stateColors[state]}">${state}</span><br/>
+      Next control date: ${newNextDate}<br/>
+      Description: ${control.description || 'External control required'}<br/>
+      <br/>
+      View equipment details: <a href="${equipmentUrl}">Click here</a>
+    `
+  };
+
+  await sendEmail(emailContent);
+}
+
 export async function updateAllSchedules() {
   await Promise.all([
     updateMaintenanceSchedules(),
-    updateCalibrationSchedules()
+    updateCalibrationSchedules(),
+    updateExternalControlSchedules()
   ]);
 }

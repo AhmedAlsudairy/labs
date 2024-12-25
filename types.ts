@@ -141,6 +141,10 @@ export type ExternalControl = {
   date: string;
   result: number;
   equipmentId: number;
+  description?: string;
+  state?: maintanace_state;
+  responsible?: maintanace_role;
+  frequency?: Frequency;
 };
 
 export type CalibrationData = {
@@ -155,7 +159,7 @@ export type CalibrationData = {
 
 // types.ts
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
-export type maintanace_state= 'done' | 'need maintance' | 'late maintance'|'calibrated'|'need calibration'|'late calibration';
+export type maintanace_state= 'done' | 'need maintance' | 'late maintance'|'calibrated'|'need calibration'|'late calibration'  | 'Final Date' | 'E.Q.C Reception';
 
 export type user_category= "food" | "animal" | "human"
 

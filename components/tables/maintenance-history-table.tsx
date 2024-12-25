@@ -3,10 +3,11 @@ import { Button } from "../ui/button";
 import { MaintenanceHistoryForm } from "../forms/maintenance-history-form";
 import { Frequency, EquipmentHistory, MaintenanceEquipmentHistory, CalibrationEquipmentHistory } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { StateIndicator } from "./maintenance-record-row";
-import { Search } from "lucide-react";
+import { StateIndicator } from "../ui/state-indicator";
+import { Search, Plus } from "lucide-react";
 import { DescriptionModal } from "../ui/description-modal";
 import { getHistoryByCalibrationScheduleId, getHistoryByScheduleId } from "@/actions/admin/history";
+import { Card, CardContent } from "../ui/card";
 
 // Types
 
@@ -20,7 +21,7 @@ interface MaintenanceHistoryTableProps {
 }
 
 // MaintenanceHistoryTable Component
-export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, frequency, onRefresh }: MaintenanceHistoryTableProps) {
+export function MaintenanceHistoryTable({equipment_id, lab_id, mode, scheduleId, frequency, onRefresh }: MaintenanceHistoryTableProps) {
   const [histories, setHistories] = useState<EquipmentHistory[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedDescription, setSelectedDescription] = useState<{
@@ -43,96 +44,121 @@ export function MaintenanceHistoryTable({equipment_id,lab_id, mode, scheduleId, 
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h4 className="text-sm font-medium">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
           {mode === 'calibration' ? 'Calibration History' : 'Maintenance History'}
         </h4>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setShowForm(!showForm)}
+          className="hover:bg-gray-100 dark:hover:bg-gray-700"
         >
-          {showForm ? "Hide Form" : `Add ${mode} History`}
+          {showForm ? (
+            "Cancel"
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-1" />
+              Add History
+            </>
+          )}
         </Button>
       </div>
 
       {showForm && (
-        <MaintenanceHistoryForm
-          equipment_id={equipment_id}
-          lab_id={lab_id}
-          mode={mode}
-          scheduleId={scheduleId}
-          frequency={frequency}
-          onSuccess={() => {
-            setShowForm(false);
-            onRefresh();
-          }}
-        />
+        <Card className="border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-4">
+            <MaintenanceHistoryForm
+              equipment_id={equipment_id}
+              lab_id={lab_id}
+              mode={mode}
+              scheduleId={scheduleId}
+              frequency={frequency}
+              onSuccess={() => {
+                setShowForm(false);
+                onRefresh();
+              }}
+            />
+          </CardContent>
+        </Card>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Performed Date</TableHead>
-            <TableHead>State</TableHead>
-            <TableHead>Description</TableHead>
-            {mode === 'maintenance' ? (
-              <TableHead>Work Performed</TableHead>
-            ) : (
-              <TableHead>Calibration Results</TableHead>
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {histories.map((history) => (
-            <TableRow key={history.history_id}>
-              <TableCell>
-                {history.performed_date
-                  ? new Intl.DateTimeFormat("en-GB", {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric"
-                  }).format(new Date(history.performed_date))
-                  : "N/A"}
-              </TableCell>
-              <TableCell>
-                {history.state && <StateIndicator state={history.state} />}
-              </TableCell>
-              <TableCell 
-                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 group"
-                onClick={() => setSelectedDescription({
-                  title: `${mode === 'calibration' ? 'Calibration' : 'Maintenance'} Description`,
-                  description: history.description
-                })}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="truncate max-w-[200px]">{history.description}</span>
-                  <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </TableCell>
-              <TableCell 
-                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 group"
-                onClick={() => setSelectedDescription({
-                  title: mode === 'calibration' ? 'Calibration Results' : 'Work Performed',
-                  description: isCalibrationHistory(history) 
-                    ? history.calibration_results 
-                    : history.work_performed
-                })}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="truncate max-w-[200px]">
-                    {isCalibrationHistory(history) 
-                      ? history.calibration_results 
-                      : history.work_performed}
-                  </span>
-                  <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </TableCell>
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50 dark:bg-gray-800">
+              <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400">Performed Date</TableHead>
+              <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400">State</TableHead>
+              <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400">Description</TableHead>
+              <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {mode === 'maintenance' ? 'Work Performed' : 'Calibration Results'}
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {histories.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-4 text-gray-500 dark:text-gray-400">
+                  No history records found
+                </TableCell>
+              </TableRow>
+            ) : (
+              histories.map((history) => (
+                <TableRow 
+                  key={history.history_id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <TableCell className="text-sm text-gray-600 dark:text-gray-300">
+                    {history.performed_date
+                      ? new Intl.DateTimeFormat("en-GB", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric"
+                      }).format(new Date(history.performed_date))
+                      : "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    {history.state && <StateIndicator state={history.state} mode={mode} />}
+                  </TableCell>
+                  <TableCell 
+                    className="cursor-pointer group"
+                    onClick={() => setSelectedDescription({
+                      title: `${mode === 'calibration' ? 'Calibration' : 'Maintenance'} Description`,
+                      description: history.description
+                    })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="truncate max-w-[200px] text-sm text-gray-600 dark:text-gray-300">
+                        {history.description}
+                      </span>
+                      <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400" />
+                    </div>
+                  </TableCell>
+                  <TableCell 
+                    className="cursor-pointer group"
+                    onClick={() => setSelectedDescription({
+                      title: mode === 'calibration' ? 'Calibration Results' : 'Work Performed',
+                      description: isCalibrationHistory(history) 
+                        ? history.calibration_results 
+                        : history.work_performed
+                    })}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="truncate max-w-[200px] text-sm text-gray-600 dark:text-gray-300">
+                        {isCalibrationHistory(history) 
+                          ? history.calibration_results 
+                          : history.work_performed}
+                      </span>
+                      <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <DescriptionModal
         open={!!selectedDescription}

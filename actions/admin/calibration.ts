@@ -242,7 +242,7 @@ export async function addCalibrationRecord(
         state: recordData.state,
         responsible: recordData.responsible,
       })
-      .eq('schedule_id', recordId)
+      .eq('calibration_schedule_id', recordId)
       .select()
       .single();
   

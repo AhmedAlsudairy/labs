@@ -24,11 +24,13 @@ import {
 import { calculateNextDate } from "@/utils/utils";
 import { Frequency } from "@/types";
 import { addCalibrationHistory, addMaintenanceHistory } from "@/actions/admin/history";
+import { addExternalControlHistory } from "@/actions/admin/external-control-history";
+import { CalibrationState, MaintenanceState, ExternalControlState } from "@/lib/types";
 
 interface MaintenanceHistoryFormProps {
   equipment_id: number;
   lab_id: number;
-  mode: 'maintenance' | 'calibration';
+  mode: 'maintenance' | 'calibration' | 'external_control';
   scheduleId: number;
   frequency: Frequency;
   onSuccess: () => void;
@@ -36,13 +38,16 @@ interface MaintenanceHistoryFormProps {
 
 const maintainanceStates = ["done", "need maintance", "late maintance"] as const;
 const calibrationStates = ["calibrated", "need calibration", "late calibration"] as const;
+const externalControlStates = ["Done", "Final Date", "E.Q.C Reception"] as const;
 
-const baseSchema = (mode: 'maintenance' | 'calibration') => ({
+const baseSchema = (mode: 'maintenance' | 'calibration' | 'external_control') => ({
   performed_date: z.date(),
   completed_date: z.date(),
   state: mode === 'maintenance' 
     ? z.enum(maintainanceStates)
-    : z.enum(calibrationStates),
+    : mode === 'calibration'
+    ? z.enum(calibrationStates)
+    : z.enum(externalControlStates),
   description: z.string().min(1, "Description is required"),
   technician_notes: z.string(),
 });
@@ -60,11 +65,17 @@ const calibrationSchema = z.object({
   next_calibration_date: z.date(),
 });
 
+const externalControlSchema = z.object({
+  ...baseSchema('external_control'),
+  work_performed: z.string().min(1, "Work performed is required"),
+  parts_used: z.string(),
+  next_date: z.date(),
+});
+
 // Base history type without schedule IDs
 type BaseHistory = {
   performed_date: Date;
   completed_date: Date;
-  state: "done" | "need maintance" | "late maintance" | "calibrated" | "need calibration" | "late calibration";
   description: string;
   technician_notes: string;
 };
@@ -75,7 +86,9 @@ type MaintenanceData = BaseHistory & {
   parts_used: string;
   next_maintenance_date: Date;
   schedule_id: number;
-  calibration_schedule_id?: never; // Ensure this is never set for maintenance
+  state: MaintenanceState;
+  calibration_schedule_id?: never;
+  external_control_id?: never;
 };
 
 // Calibration history type with calibration_schedule_id
@@ -83,7 +96,21 @@ type CalibrationData = BaseHistory & {
   calibration_results: string;
   next_calibration_date: Date;
   calibration_schedule_id: number;
-  schedule_id?: never; // Ensure this is never set for calibration
+  state: CalibrationState;
+  schedule_id?: never;
+  external_control_id?: never;
+};
+
+// External control history type
+type ExternalControlData = BaseHistory & {
+  work_performed: string;
+  parts_used: string;
+  next_date: Date;
+  external_control_id: number;
+  external_control_state: ExternalControlState;
+  state: ExternalControlState;
+  schedule_id?: never;
+  calibration_schedule_id?: never;
 };
 
 export function MaintenanceHistoryForm({ 
@@ -95,10 +122,15 @@ export function MaintenanceHistoryForm({
   onSuccess 
 }: MaintenanceHistoryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const formSchema = mode === 'maintenance' 
     ? maintenanceSchema 
-    : calibrationSchema.extend({
+    : mode === 'calibration'
+    ? calibrationSchema.extend({
         state: z.enum(calibrationStates)
+      })
+    : externalControlSchema.extend({
+        state: z.enum(externalControlStates)
       });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -106,12 +138,19 @@ export function MaintenanceHistoryForm({
     defaultValues: {
       description: "",
       technician_notes: "",
-      state: mode === 'maintenance' ? "done" : "calibrated",
+      state: mode === 'maintenance' 
+        ? "done" 
+        : mode === 'calibration'
+        ? "calibrated"
+        : "E.Q.C Reception",
       ...(mode === 'maintenance' ? {
         work_performed: "",
         parts_used: "",
-      } : {
+      } : mode === 'calibration' ? {
         calibration_results: "",
+      } : {
+        work_performed: "",
+        parts_used: "",
       }),
     },
   });
@@ -120,7 +159,11 @@ export function MaintenanceHistoryForm({
     const performed_date = form.getValues('performed_date');
     if (performed_date) {
       const nextDate = calculateNextDate(frequency, performed_date);
-      const dateFieldName = mode === 'maintenance' ? 'next_maintenance_date' : 'next_calibration_date';
+      const dateFieldName = mode === 'maintenance' 
+        ? 'next_maintenance_date' 
+        : mode === 'calibration'
+        ? 'next_calibration_date'
+        : 'next_date';
       form.setValue(dateFieldName, new Date(nextDate));
     }
   }, [form.watch('performed_date'), frequency, mode]);
@@ -135,34 +178,33 @@ export function MaintenanceHistoryForm({
           ...values,
           schedule_id: scheduleId,
           next_maintenance_date: new Date(nextDate),
-          work_performed: (values as MaintenanceData).work_performed || '',
-          parts_used: (values as MaintenanceData).parts_used || '',
+          work_performed: (values as any).work_performed || '',
+          parts_used: (values as any).parts_used || '',
+          state: values.state as MaintenanceState,
         };
-        console.log('Submitting maintenance data:', {
-          data: maintenanceData,
-          lab_id,
-          equipment_id
-        });
         await addMaintenanceHistory(maintenanceData, lab_id, equipment_id);
-      } else {
+      } else if (mode === 'calibration') {
         const calibrationData: CalibrationData = {
           ...values,
           calibration_schedule_id: scheduleId,
           next_calibration_date: new Date(nextDate),
-          calibration_results: (values as CalibrationData).calibration_results || '',
+          calibration_results: (values as any).calibration_results || '',
+          state: values.state as CalibrationState,
         };
-        console.log('Submitting calibration data:', {
-          data: calibrationData,
-          lab_id,
-          equipment_id,
-          scheduleId,
-          frequency,
-          values
-        });
         await addCalibrationHistory(calibrationData, lab_id, equipment_id);
+      } else {
+        const externalControlData: ExternalControlData = {
+          ...values,
+          external_control_id: scheduleId,
+          next_date: new Date(nextDate),
+          work_performed: (values as any).work_performed || '',
+          parts_used: (values as any).parts_used || '',
+          state: values.state as ExternalControlState,
+          external_control_state: values.state as ExternalControlState,
+        };
+        await addExternalControlHistory(externalControlData, lab_id, equipment_id);
       }
 
-      console.log('Form submission successful');
       form.reset();
       onSuccess();
     } catch (error) {
@@ -204,7 +246,6 @@ export function MaintenanceHistoryForm({
           />
         </div>
 
-        {/* Common Fields */}
         <FormField
           control={form.control}
           name="state"
@@ -224,11 +265,17 @@ export function MaintenanceHistoryForm({
                       <SelectItem value="need maintance">Need Maintenance</SelectItem>
                       <SelectItem value="late maintance">Late Maintenance</SelectItem>
                     </>
-                  ) : (
+                  ) : mode === 'calibration' ? (
                     <>
                       <SelectItem value="calibrated">Calibrated</SelectItem>
                       <SelectItem value="need calibration">Need Calibration</SelectItem>
                       <SelectItem value="late calibration">Late Calibration</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="Done">Done</SelectItem>
+                      <SelectItem value="Final Date">Final Date</SelectItem>
+                      <SelectItem value="E.Q.C Reception">E.Q.C Reception</SelectItem>
                     </>
                   )}
                 </SelectContent>
@@ -239,7 +286,7 @@ export function MaintenanceHistoryForm({
         />
 
         {/* Mode Specific Fields */}
-        {mode === 'maintenance' ? (
+        {mode === 'maintenance' || mode === 'external_control' ? (
           <>
             <FormField
               control={form.control}
@@ -268,7 +315,7 @@ export function MaintenanceHistoryForm({
               )}
             />
           </>
-        ) : (
+        ) : mode === 'calibration' ? (
           <FormField
             control={form.control}
             name="calibration_results"
@@ -282,9 +329,8 @@ export function MaintenanceHistoryForm({
               </FormItem>
             )}
           />
-        )}
+        ) : null}
 
-        {/* Common Fields */}
         <FormField
           control={form.control}
           name="description"
@@ -315,10 +361,18 @@ export function MaintenanceHistoryForm({
 
         <FormField
           control={form.control}
-          name={mode === 'maintenance' ? 'next_maintenance_date' : 'next_calibration_date'}
+          name={
+            mode === 'maintenance' 
+              ? 'next_maintenance_date' 
+              : mode === 'calibration'
+              ? 'next_calibration_date'
+              : 'next_date'
+          }
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Next {mode === 'maintenance' ? 'Maintenance' : 'Calibration'} Date</FormLabel>
+              <FormLabel>
+                Next {mode === 'maintenance' ? 'Maintenance' : mode === 'calibration' ? 'Calibration' : 'Control'} Date
+              </FormLabel>
               <FormControl>
                 <DatePicker date={field.value} onSelect={field.onChange} />
               </FormControl>

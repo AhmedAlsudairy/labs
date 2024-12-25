@@ -1,101 +1,131 @@
 // components/MaintenanceRecords/MaintenanceRecordRow.tsx
 import { maintanace_state, MaintenanceRecord } from "@/types";
 import { Button } from "@/components/ui/button";
-import { EditIcon, Trash2, ChevronUp, ChevronDown, Search, History } from "lucide-react";
+import { ChevronDown, ChevronUp, EditIcon, Trash2, Info } from "lucide-react";
 import { TableCell, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { useState } from "react";
 import { MaintenanceHistoryTable } from "./maintenance-history-table";
 import { DescriptionModal } from "./description-modal";
+import { format } from 'date-fns';
+
+export type RecordMode = 'maintenance' | 'calibration' | 'external_control';
 
 interface MaintenanceRecordRowProps {
+  record: MaintenanceRecord;
+  onDelete: (id: number) => void;
+  onEdit: (id: number) => void;
+  mode: RecordMode;
   equipment_id: number;
   lab_id: number;
-  mode: "maintenance" | "calibration";
-  record: MaintenanceRecord;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
-  isEditing: boolean;
+  isEditing?: boolean;
 }
 
-export function MaintenanceRecordRow({
+export default function MaintenanceRecordRow({
+  record,
+  onDelete,
+  onEdit,
+  mode,
   equipment_id,
   lab_id,
-  mode,
-  record,
-  onEdit,
-  onDelete,
-  isEditing,
+  isEditing = false
 }: MaintenanceRecordRowProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
 
+  const getStateColor = (state: string): "success" | "warning" | "destructive" | "default" => {
+    if (mode === 'external_control') {
+      switch (state) {
+        case 'Done':
+          return 'success';
+        case 'Final Date':
+          return 'warning';
+        case 'E.Q.C Reception':
+          return 'destructive';
+        default:
+          return 'default';
+      }
+    } else {
+      const variants: Record<string, "success" | "warning" | "destructive"> = {
+        "done": "success",
+        "need maintance": "warning",
+        "late maintance": "destructive",
+        "calibrated": "success",
+        "need calibration": "warning",
+        "late calibration": "destructive",
+      };
+
+      return variants[state] || 'default';
+    }
+  };
+
   return (
     <>
-      <TableRow className="dark:border-gray-700">
+      <TableRow className="dark:border-gray-700 group">
         <TableCell className="dark:text-gray-300">
-          {record.date
-            ? new Intl.DateTimeFormat("en-GB", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric"
-              }).format(new Date(record.date))
-            : "N/A"}
+          {record.date && format(new Date(record.date), 'dd/MM/yyyy')}
         </TableCell>
-        <TableCell className="dark:text-gray-300">{record.frequency}</TableCell>
+        <TableCell className="dark:text-gray-300">
+          {record.frequency}
+        </TableCell>
         <TableCell className="dark:text-gray-300">
           {record.responsible}
         </TableCell>
         <TableCell className="dark:text-gray-300">
-          {record.state && <StateIndicator state={record.state} />}
+          {record.state && (
+            <Badge variant={getStateColor(record.state)} className="capitalize">
+              {record.state}
+            </Badge>
+          )}
         </TableCell>
         <TableCell 
-          className="dark:text-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 group"
+          className="dark:text-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
           onClick={() => setShowDescription(true)}
         >
-          <div className="flex items-center gap-2">
-            <span className="truncate max-w-[300px]">{record.description}</span>
-            <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center">
+            <span className="truncate max-w-[200px]">{record.description}</span>
+            <Info className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </TableCell>
-        <TableCell>
-          <div className="flex gap-2">
+        <TableCell className="space-x-2">
+          <div className="flex items-center">
             <ActionButtons
               recordId={record.id}
               onEdit={onEdit}
               onDelete={onDelete}
               isEditing={isEditing}
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-1"
-            >
-              <History className="h-4 w-4" />
-              {showHistory ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
+            {mode !== 'external_control' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHistory(!showHistory)}
+                className="ml-2"
+              >
+                {showHistory ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            )}
           </div>
         </TableCell>
       </TableRow>
 
-      {showHistory && (
+      {mode !== 'external_control' && showHistory && (
         <TableRow>
-          <TableCell colSpan={6} className="p-4 bg-gray-50 dark:bg-gray-800">
-            <MaintenanceHistoryTable
-              equipment_id={equipment_id}
-              mode={mode}
-              lab_id={lab_id}
-              scheduleId={record.id}
-              frequency={record.frequency}
-              onRefresh={() => {
-                // Add refresh logic if needed
-              }}
-            />
+          <TableCell colSpan={6} className="p-0 border-t-0">
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg m-2">
+              <MaintenanceHistoryTable
+                equipment_id={equipment_id}
+                mode={mode}
+                lab_id={lab_id}
+                scheduleId={record.id}
+                frequency={record.frequency}
+                onRefresh={() => {}}
+              />
+            </div>
           </TableCell>
         </TableRow>
       )}
@@ -103,32 +133,12 @@ export function MaintenanceRecordRow({
       <DescriptionModal
         isOpen={showDescription}
         onClose={() => setShowDescription(false)}
-        title={`${mode === 'maintenance' ? 'Maintenance' : 'Calibration'} Description`}
+        title={`${mode === 'maintenance' ? 'Maintenance' : mode === 'calibration' ? 'Calibration' : 'External Control'} Description`}
         description={record.description || 'No description available'}
       />
     </>
   );
 }
-
-export const StateIndicator = ({ state }: { state: maintanace_state }) => {
-  const variants: Record<
-    maintanace_state,
-    "success" | "warning" | "destructive"
-  > = {
-    "done": "success",
-    "need maintance": "warning",
-    "late maintance": "destructive",
-    "calibrated": "success",
-    "need calibration": "warning",
-    "late calibration": "destructive",
-  };
-
-  return (
-    <Badge variant={variants[state]} className="capitalize">
-      {state}
-    </Badge>
-  );
-};
 
 interface ActionButtonsProps {
   recordId: number;
@@ -141,7 +151,7 @@ export function ActionButtons({
   recordId,
   onEdit,
   onDelete,
-  isEditing,
+  isEditing
 }: ActionButtonsProps) {
   return (
     <>
@@ -158,7 +168,7 @@ export function ActionButtons({
         size="sm"
         onClick={() => onDelete(recordId)}
       >
-        <Trash2 className="h-4 w-4 text-destructive" />
+        <Trash2 className="h-4 w-4" />
       </Button>
     </>
   );

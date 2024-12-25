@@ -22,6 +22,8 @@ import {
   ExternalControl,
   CalibrationData,
   maintanace_state,
+  Frequency,
+  maintanace_role,
 } from "@/types";
 import { useTheme } from "next-themes";
 import { formatDeviceAge } from "@/utils/utils";
@@ -33,9 +35,9 @@ import { MaintenanceRecords } from "@/components/tables/maintanance-record-table
 import { DowntimeRecords } from "@/components/tables/downtime-record-table";
 import { getEquipmentById } from "@/actions/admin/equipments";
 import { deleteMaintenanceRecord, getMaintenanceRecords } from "@/actions/admin/maintenance-record";
-import { getExternalControls } from "@/actions/admin/index";
 import { deleteCalibrationRecord, getCalibrationRecords } from "@/actions/admin/calibration";
 import { deleteDowntimeRecord, getDowntimeRecords } from "@/actions/admin/down-time";
+import { deleteExternalControl, getExternalControlRecords } from "@/actions/admin/external-control";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -79,7 +81,7 @@ export default function EquipmentPage() {
         ] = await Promise.all([
           getEquipmentById(equipmentId),
           getMaintenanceRecords(equipmentId, 'equipment'),
-          getExternalControls(equipmentId),
+          getExternalControlRecords(equipmentId),
           getCalibrationRecords(equipmentId, 'equipment'),
           getDowntimeRecords(equipmentId),
         ]);
@@ -98,13 +100,14 @@ export default function EquipmentPage() {
     }
   };
 
-  const handleDelete = async (id: number, mode: 'maintenance' | 'calibration') => {
+  const handleDelete = async (id: number, mode: 'maintenance' | 'calibration' | 'external_control') => {
     try {
       if (mode === 'maintenance') {
         await deleteMaintenanceRecord(id);
-      } else {
+      } else if (mode === 'calibration') {
         await deleteCalibrationRecord(id);
-
+      } else if (mode === 'external_control') {
+        await deleteExternalControl(id);
       }
       fetchDataWithRetry();
     } catch (error) {
@@ -286,62 +289,51 @@ export default function EquipmentPage() {
             >
               Down-time Records
             </TabsTrigger>
+            <TabsTrigger
+              value="external_control"
+              className="px-6 py-2 dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
+            >
+              External Control
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="maintenance">
             <MaintenanceRecords
-              lab_id={labId}
               mode="maintenance"
+              lab_id={labId}
+              equipment_id={equipmentId}
               records={maintenanceRecords}
-              equipmentId={equipmentId}
               onDelete={(id) => handleDelete(id, 'maintenance')}
               onSuccess={fetchDataWithRetry}
             />
           </TabsContent>
 
           <TabsContent value="controls">
-            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="bg-gray-50 dark:bg-gray-700">
-                <CardTitle className="text-xl font-semibold dark:text-white">
-                  External Controls
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={externalControls}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={theme === "dark" ? "#374151" : "#ccc"}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      stroke={theme === "dark" ? "#9CA3AF" : "#666"}
-                    />
-                    <YAxis stroke={theme === "dark" ? "#9CA3AF" : "#666"} />
-                    <Tooltip
-                      contentStyle={
-                        theme === "dark"
-                          ? { backgroundColor: "#1F2937", border: "none" }
-                          : undefined
-                      }
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="result"
-                      fill={theme === "dark" ? "#60A5FA" : "#8884d8"}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <MaintenanceRecords
+              mode="external_control"
+              lab_id={labId}
+              equipment_id={equipmentId}
+              records={externalControls.map(control => ({
+                id: control.id,
+                date: control.date,
+                result: control.result,
+                equipmentId: control.equipmentId,
+                description: control.description || `External Control Result: ${control.result}`,
+                frequency: control.frequency || 'monthly' as Frequency,
+                responsible: control.responsible || 'lab technician' as maintanace_role,
+                state: control.state || (control.result >= 0 ? 'done' : 'need maintance')
+              }))}
+              onDelete={(id) => handleDelete(id, 'external_control')}
+              onSuccess={fetchDataWithRetry}
+            />
           </TabsContent>
 
           <TabsContent value="calibration">
             <MaintenanceRecords
-              lab_id={labId}
               mode="calibration"
+              lab_id={labId}
+              equipment_id={equipmentId}
               records={calibrationData}
-              equipmentId={equipmentId}
               onDelete={(id) => handleDelete(id, 'calibration')}
               onSuccess={fetchDataWithRetry}
             />
@@ -362,6 +354,24 @@ export default function EquipmentPage() {
               }}
               onSuccess={fetchDataWithRetry}
             />
+          </TabsContent>
+
+          <TabsContent value="external_control">
+            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader className="bg-gray-50 dark:bg-gray-700">
+                <CardTitle className="text-xl font-semibold dark:text-white">
+                  External Controls
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {/* Display external controls data in a suitable format */}
+                {externalControls.map((control) => (
+                  <div key={control.id} className="mb-4">
+                    {/* Add your external control display logic here */}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
@@ -387,6 +397,8 @@ const StateIndicator = ({ state }: { state: maintanace_state }) => {
     calibrated: "success",
     "need calibration": "warning",
     "late calibration": "destructive",
+    "Final Date": "warning",
+    "E.Q.C Reception": "destructive"
   };
 
   return <Badge variant={variants[state]}>{state}</Badge>;
