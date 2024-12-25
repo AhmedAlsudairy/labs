@@ -289,12 +289,7 @@ export default function EquipmentPage() {
             >
               Down-time Records
             </TabsTrigger>
-            <TabsTrigger
-              value="external_control"
-              className="px-6 py-2 dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white"
-            >
-              External Control
-            </TabsTrigger>
+         
           </TabsList>
 
           <TabsContent value="maintenance">
@@ -356,23 +351,7 @@ export default function EquipmentPage() {
             />
           </TabsContent>
 
-          <TabsContent value="external_control">
-            <Card className="shadow-lg dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader className="bg-gray-50 dark:bg-gray-700">
-                <CardTitle className="text-xl font-semibold dark:text-white">
-                  External Controls
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {/* Display external controls data in a suitable format */}
-                {externalControls.map((control) => (
-                  <div key={control.id} className="mb-4">
-                    {/* Add your external control display logic here */}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          
         </Tabs>
       </div>
     </ErrorBoundary>
