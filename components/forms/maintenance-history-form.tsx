@@ -22,9 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { calculateNextDate } from "@/utils/utils";
-import { Frequency } from "@/types";
-import { addCalibrationHistory, addMaintenanceHistory } from "@/actions/admin/history";
-import { addExternalControlHistory } from "@/actions/admin/external-control-history";
+import { Frequency, maintanace_state } from "@/types";
+import { addCalibrationHistory, addExternalControlHistory, addMaintenanceHistory } from "@/actions/admin/history";
 import { CalibrationState, MaintenanceState, ExternalControlState } from "@/lib/types";
 
 interface MaintenanceHistoryFormProps {
@@ -107,8 +106,8 @@ type ExternalControlData = BaseHistory & {
   parts_used: string;
   next_date: Date;
   external_control_id: number;
-  external_control_state: ExternalControlState;
-  state: ExternalControlState;
+  external_control_state: maintanace_state;
+  state: maintanace_state;
   schedule_id?: never;
   calibration_schedule_id?: never;
 };
@@ -199,8 +198,8 @@ export function MaintenanceHistoryForm({
           next_date: new Date(nextDate),
           work_performed: (values as any).work_performed || '',
           parts_used: (values as any).parts_used || '',
-          state: values.state as ExternalControlState,
-          external_control_state: values.state as ExternalControlState,
+          state: values.state as maintanace_state,
+          external_control_state: values.state as maintanace_state,
         };
         await addExternalControlHistory(externalControlData, lab_id, equipment_id);
       }

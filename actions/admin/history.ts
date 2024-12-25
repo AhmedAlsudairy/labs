@@ -183,12 +183,98 @@ export async function addCalibrationHistory(
     }
 }
 
+// Add external control history
+export async function addExternalControlHistory(
+    data: Omit<EquipmentHistory, 'history_id' | 'calibration_schedule_id' | 'schedule_id'>,
+    lab_id: number,
+    equipment_id: number
+) {
+    try {
+        // Get lab information for notifications
+        const lab = await getLaboratoryById(lab_id);
+        if (!lab) {
+            throw new Error('Laboratory not found');
+        }
+
+        const { data: historyData, error: historyError } = await supabase
+            .from('equipment_history')
+            .insert({
+                ...data,
+                equipment_id,
+            })
+            .select()
+            .single();
+
+        if (historyError) throw historyError;
+
+        // Send notification emails
+        const { data: cordinator } = await supabase
+            .rpc('get_lab_matched_users', {
+                p_lab_id: lab_id
+            });
+
+        if (!isValidManagerId(lab.manager_id)) {
+            console.warn('Invalid or missing manager_id');
+            return { error: new Error('Invalid manager_id') };
+        }
+
+        const { data: userData } = await supabase.auth
+            .admin.getUserById(lab.manager_id);
+
+        const cordinator_email = cordinator?.[0]?.email;
+        const manager_email = userData?.user?.email;
+
+        const validEmails = filterValidEmails([
+            manager_email,
+            'micronboy632@gmail.com',
+            cordinator_email
+        ]);
+
+        if (validEmails.length > 0) {
+            const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
+
+            const emailContent = {
+                to: validEmails,
+                title: `External Control Status Update: ${data.state}`,
+                body: `
+                    External control status has been updated to: ${data.state}<br/>
+                    Description: ${data.description}<br/>
+                    Performed date: ${data.performed_date}<br/>
+                    <br/>
+                    View equipment details: <a href="${equipmentUrl}">Click here</a>
+                `
+            };
+
+            await sendEmail(emailContent);
+        }
+
+        return { data: historyData };
+    } catch (error) {
+        console.error('Error in addExternalControlHistory:', error);
+        throw error;
+    }
+}
+
 // Get history by maintenance schedule
 export async function getHistoryByScheduleId(scheduleId: number) {
     const { data, error } = await supabase
         .from('equipment_history')
         .select('*')
         .eq('schedule_id', scheduleId)
+        .order('performed_date', { ascending: false });
+
+    if (error) return { error };
+    return { data };
+}
+
+// Get external control history
+export async function getExternalControlHistory(equipmentId: number) {
+    const { data, error } = await supabase
+        .from('equipment_history')
+        .select('*')
+        .eq('equipment_id', equipmentId)
+        .is('calibration_schedule_id', null)
+        .is('schedule_id', null)
         .order('performed_date', { ascending: false });
 
     if (error) return { error };

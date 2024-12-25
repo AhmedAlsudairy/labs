@@ -226,7 +226,9 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
       *,
       equipment:equipment_id (
         equipment_id,
-        name,
+        device (
+          name
+        ),
         laboratory:lab_id (
           *
         )
@@ -367,7 +369,7 @@ async function sendExternalControlNotification(control: any, state: ExternalCont
     to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
     title: `External Control Schedule Alert: ${state}`,
     body: `
-      Equipment: ${control.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+      Equipment: ${control.equipment.device?.name || 'Unknown Equipment'}<br/>
       Current Status: <span style="color: ${stateColors[state]}">${state}</span><br/>
       Next control date: ${newNextDate}<br/>
       Description: ${control.description || 'External control required'}<br/>
