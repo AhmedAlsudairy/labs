@@ -1,7 +1,16 @@
-import { Resend } from 'resend';
+'use server';
+import nodemailer from 'nodemailer';
 
-// Initialize Resend with your API key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Create reusable transporter object using SMTP transport
+const transporter = nodemailer.createTransport({
+  host: 'lablaboman.live',
+  port: 465,
+  secure: true, // true for 465, false for other ports
+  auth: {
+    user: 'noreply@lablaboman.live',
+    pass: process.env.SMTP_PASSWORD,
+  },
+});
 
 interface EmailParams {
   to: string[];
@@ -11,9 +20,9 @@ interface EmailParams {
 
 export async function sendEmail({ to, title, body }: EmailParams): Promise<{ success: boolean; message: string }> {
   try {
-    const data = await resend.emails.send({
+    await transporter.sendMail({
       from: '"LabLaboman" <noreply@lablaboman.live>',
-      to: to,
+      to: to.join(', '),
       subject: title,
       html: `<p>${body}</p>`
     });
