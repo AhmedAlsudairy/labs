@@ -157,13 +157,21 @@ export function MaintenanceHistoryForm({
   useEffect(() => {
     const performed_date = form.getValues('performed_date');
     if (performed_date) {
-      const nextDate = calculateNextDate(frequency, performed_date);
+      const nextDate = new Date(calculateNextDate(frequency, performed_date));
       const dateFieldName = mode === 'maintenance' 
         ? 'next_maintenance_date' 
         : mode === 'calibration'
         ? 'next_calibration_date'
         : 'next_date';
-      form.setValue(dateFieldName, new Date(nextDate));
+      
+      // Ensure the next date is always at least one day after performed date
+      if (frequency === 'daily') {
+        const next = new Date(performed_date);
+        next.setDate(next.getDate() + 1);
+        form.setValue(dateFieldName, next);
+      } else {
+        form.setValue(dateFieldName, nextDate);
+      }
     }
   }, [form.watch('performed_date'), frequency, mode]);
 

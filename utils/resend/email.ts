@@ -1,4 +1,4 @@
-'use server';
+'use server'
 import nodemailer from 'nodemailer';
 
 // Create reusable transporter object using SMTP transport
@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
   port: 465,
   secure: true, // true for 465, false for other ports
   auth: {
-    user: 'noreply@lablaboman.live',
+    user: 'noreplay@lablaboman.live',
     pass: process.env.SMTP_PASSWORD,
   },
 });
@@ -21,7 +21,7 @@ interface EmailParams {
 export async function sendEmail({ to, title, body }: EmailParams): Promise<{ success: boolean; message: string }> {
   try {
     await transporter.sendMail({
-      from: '"LabLaboman" <noreply@lablaboman.live>',
+      from: '"LabLaboman" <noreplay@lablaboman.live>',
       to: to.join(', '),
       subject: title,
       html: `<p>${body}</p>`
