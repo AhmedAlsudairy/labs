@@ -305,6 +305,7 @@ async function sendMaintenanceNotification(schedule: any, state: MaintenanceStat
     to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
     title: `Equipment Maintenance Schedule Alert: ${state}`,
     body: `
+      lab : ${schedule.equipment.laboratory.lab_id}<br/>
       Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
       Current Status: ${state}<br/>
       Next maintenance date: ${newNextDate}<br/>
@@ -334,6 +335,7 @@ async function sendCalibrationNotification(schedule: any, state: CalibrationStat
     to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
     title: `Equipment Calibration Schedule Alert: ${state}`,
     body: `
+     lab : ${schedule.equipment.laboratory.lab_id}<br/>
       Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
       Current Status: ${state}<br/>
       Next calibration date: ${newNextDate}<br/>
