@@ -129,6 +129,7 @@ export async function addMaintenanceHistory(
         to: validEmails,
         title: `Equipment Maintenance Status Update: ${data.state}`,
         body: `
+             lab : ${lab.name}<br/>
             Equipment maintenance status has been updated to: ${data.state}<br/>
             Description: ${data.description}<br/>
             Next maintenance date: ${data.next_maintenance_date}<br/>
@@ -172,10 +173,51 @@ export async function addCalibrationHistory(
 
         if (historyError) throw historyError;
 
+        // Get coordinator and manager emails
+        const { data: cordinator } = await supabase
+            .rpc('get_lab_matched_users', {
+                p_lab_id: lab_id
+            });
+
+        if (!isValidManagerId(lab.manager_id)) {
+            console.warn('Invalid or missing manager_id');
+            return { error: new Error('Invalid manager_id') };
+        }
+
+        const { data: userData } = await supabase.auth
+            .admin.getUserById(lab.manager_id);
+
+        const cordinator_email = cordinator?.[0]?.email;
+        const manager_email = userData?.user?.email;
+
+        const validEmails = filterValidEmails([
+            manager_email,
+            'micronboy632@gmail.com',
+            cordinator_email
+        ]);
+
+        if (validEmails.length > 0) {
+            const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
+
+            const emailContent = {
+                to: validEmails,
+                title: `Equipment Calibration Status Update: ${data.state}`,
+                body: `
+                    lab : ${lab.name}<br/>
+                    Equipment calibration status has been updated to: ${data.state}<br/>
+                    Description: ${data.description}<br/>
+                    Next calibration date: ${data.next_maintenance_date}<br/>
+                    <br/>
+                    View equipment details: <a href="${equipmentUrl}">Click here</a>
+                `
+            };
+
+            await sendEmail(emailContent);
+        }
+
         // Update calibration schedules
         await updateCalibrationSchedules();
 
-        // Rest of the function remains the same...
         return { data: historyData };
     } catch (error) {
         console.error('Error in addCalibrationHistory:', error);
@@ -207,7 +249,7 @@ export async function addExternalControlHistory(
 
         if (historyError) throw historyError;
 
-        // Send notification emails
+        // Get coordinator and manager emails
         const { data: cordinator } = await supabase
             .rpc('get_lab_matched_users', {
                 p_lab_id: lab_id
@@ -237,6 +279,7 @@ export async function addExternalControlHistory(
                 to: validEmails,
                 title: `External Control Status Update: ${data.state}`,
                 body: `
+                    lab : ${lab.name}<br/>
                     External control status has been updated to: ${data.state}<br/>
                     Description: ${data.description}<br/>
                     Performed date: ${data.performed_date}<br/>
