@@ -38,6 +38,7 @@ import { deleteMaintenanceRecord, getMaintenanceRecords } from "@/actions/admin/
 import { deleteCalibrationRecord, getCalibrationRecords } from "@/actions/admin/calibration";
 import { deleteDowntimeRecord, getDowntimeRecords } from "@/actions/admin/down-time";
 import { deleteExternalControl, getExternalControlRecords } from "@/actions/admin/external-control";
+import { mapToCalibrationData, mapCalibrationToRecord } from "@/utils/type-mappers";
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -90,7 +91,11 @@ export default function EquipmentPage() {
         setEquipment(equipmentData);
         setMaintenanceRecords(maintenanceData);
         setExternalControls(controlData);
-        setCalibrationData(calibrationData);
+        
+        // Store the raw calibration data or convert it as needed
+        const convertedCalibrationData = mapToCalibrationData(calibrationData);
+        setCalibrationData(convertedCalibrationData);
+        
         setDowntimeRecords(downtimeData);
         return;
       } catch (error) {
@@ -328,7 +333,7 @@ export default function EquipmentPage() {
               mode="calibration"
               lab_id={labId}
               equipment_id={equipmentId}
-              records={calibrationData}
+              records={mapCalibrationToRecord(calibrationData)}
               onDelete={(id) => handleDelete(id, 'calibration')}
               onSuccess={fetchDataWithRetry}
             />
