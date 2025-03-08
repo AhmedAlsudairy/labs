@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { calculateNextDate } from "@/utils/utils";
+import { calculateNextDate } from "@/utils/date-utils";
 import { Frequency, maintanace_state } from "@/types";
 import { addCalibrationHistory, addExternalControlHistory, addMaintenanceHistory } from "@/actions/admin/history";
 import { CalibrationState, MaintenanceState, ExternalControlState } from "@/lib/types";
@@ -86,6 +86,7 @@ type MaintenanceData = BaseHistory & {
   next_maintenance_date: Date;
   schedule_id: number;
   state: MaintenanceState;
+  frequency: Frequency; // Add this required property
   calibration_schedule_id?: never;
   external_control_id?: never;
 };
@@ -96,7 +97,11 @@ type CalibrationData = BaseHistory & {
   next_calibration_date: Date;
   calibration_schedule_id: number;
   state: CalibrationState;
+  frequency: Frequency; // Add this required property
   schedule_id?: never;
+  work_performed?: never;
+  parts_used?: never;
+  next_maintenance_date?: never;
   external_control_id?: never;
 };
 
@@ -108,8 +113,12 @@ type ExternalControlData = BaseHistory & {
   external_control_id: number;
   external_control_state: maintanace_state;
   state: maintanace_state;
+  frequency: Frequency; // Add this required property
   schedule_id?: never;
   calibration_schedule_id?: never;
+  next_maintenance_date?: never;
+  next_calibration_date?: never;
+  calibration_results?: never;
 };
 
 export function MaintenanceHistoryForm({ 
@@ -157,57 +166,74 @@ export function MaintenanceHistoryForm({
   useEffect(() => {
     const performed_date = form.getValues('performed_date');
     if (performed_date) {
-      const nextDate = new Date(calculateNextDate(frequency, performed_date));
+      // Generate the next date based on current date and frequency
+      const nextDate = calculateNextDate(frequency);
+      
       const dateFieldName = mode === 'maintenance' 
         ? 'next_maintenance_date' 
         : mode === 'calibration'
         ? 'next_calibration_date'
         : 'next_date';
       
-      // Ensure the next date is always at least one day after performed date
-      if (frequency === 'daily') {
-        const next = new Date(performed_date);
-        next.setDate(next.getDate() + 1);
-        form.setValue(dateFieldName, next);
-      } else {
-        form.setValue(dateFieldName, nextDate);
-      }
+      form.setValue(dateFieldName, nextDate);
     }
-  }, [form.watch('performed_date'), frequency, mode]);
+  }, [form.watch('performed_date'), frequency, mode, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsSubmitting(true);
-      const nextDate = calculateNextDate(frequency, values.performed_date);
+      
+      // Always calculate next date from today if state is 'done'/'calibrated'
+      let nextDate;
+      if ((mode === 'maintenance' && values.state === 'done') || 
+          (mode === 'calibration' && values.state === 'calibrated') ||
+          (mode === 'external_control' && values.state === 'Done')) {
+        nextDate = calculateNextDate(frequency);
+      } else {
+        // For other states, calculate based on performed date
+        nextDate = calculateNextDate(frequency, values.performed_date);
+      }
       
       if (mode === 'maintenance') {
         const maintenanceData: MaintenanceData = {
-          ...values,
+          performed_date: values.performed_date,
+          completed_date: values.completed_date,
+          description: values.description,
+          technician_notes: values.technician_notes,
           schedule_id: scheduleId,
-          next_maintenance_date: new Date(nextDate),
+          next_maintenance_date: nextDate,
           work_performed: (values as any).work_performed || '',
           parts_used: (values as any).parts_used || '',
           state: values.state as MaintenanceState,
+          frequency: frequency,
         };
         await addMaintenanceHistory(maintenanceData, lab_id, equipment_id);
       } else if (mode === 'calibration') {
         const calibrationData: CalibrationData = {
-          ...values,
+          performed_date: values.performed_date,
+          completed_date: values.completed_date,
+          description: values.description,
+          technician_notes: values.technician_notes,
           calibration_schedule_id: scheduleId,
-          next_calibration_date: new Date(nextDate),
+          next_calibration_date: nextDate,
           calibration_results: (values as any).calibration_results || '',
           state: values.state as CalibrationState,
+          frequency: frequency,
         };
         await addCalibrationHistory(calibrationData, lab_id, equipment_id);
       } else {
         const externalControlData: ExternalControlData = {
-          ...values,
+          performed_date: values.performed_date,
+          completed_date: values.completed_date,
+          description: values.description,
+          technician_notes: values.technician_notes,
           external_control_id: scheduleId,
-          next_date: new Date(nextDate),
+          next_date: nextDate,
           work_performed: (values as any).work_performed || '',
           parts_used: (values as any).parts_used || '',
           state: values.state as maintanace_state,
           external_control_state: values.state as maintanace_state,
+          frequency: frequency,
         };
         await addExternalControlHistory(externalControlData, lab_id, equipment_id);
       }

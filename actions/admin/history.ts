@@ -1,9 +1,10 @@
 'use server';
 
-import { EquipmentHistory } from "@/types";
+import { EquipmentHistory, MaintenanceEquipmentHistory, CalibrationEquipmentHistory, ExternalControlHistory, Frequency } from "@/types";
 import { updateCalibrationSchedules, updateMaintenanceSchedules } from "./scheduleUpdates";
 import { sendEmail } from "@/utils/resend/email";
 import { getLaboratoryById } from "./lab";
+import { calculateNextDate } from "@/utils/date-utils";
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -68,79 +69,95 @@ export async function getHistoryById(historyId: number) {
     return { data };
 }
 
+// Type for maintenance history data
+type MaintenanceHistoryInput = Omit<MaintenanceEquipmentHistory, 'history_id'>;
+
+// Type for calibration history data
+type CalibrationHistoryInput = Omit<CalibrationEquipmentHistory, 'history_id'>;
+
+// Type for external control history data
+type ExternalControlHistoryInput = Omit<ExternalControlHistory, 'history_id'>;
+
 // Modified addMaintenanceHistory function
 export async function addMaintenanceHistory(
-    data: Omit<EquipmentHistory, 'history_id' | 'calibration_schedule_id'>,
+    data: MaintenanceHistoryInput,
     lab_id: number,
     equipment_id: number
 ) {
-    // Insert history record
-    const { data: result, error } = await supabase
-        .from('equipment_history')
-        .insert([{ ...data }])
-        .select()
-        .single();
+    try {
+        // Insert history record
+        const { data: result, error } = await supabase
+            .from('equipment_history')
+            .insert([{ ...data }])
+            .select()
+            .single();
 
-    if (error) return { error };
-    // Update schedule
-    const { error: updateError } = await supabase
-        .from('maintenance_schedule')
-        .update({
-            state: data.state,
-            next_date: data.next_maintenance_date,
-            updated_by: 'manual'
+        if (error) throw error;
 
-        })
-        .eq('schedule_id', data.schedule_id);
+        // Update maintenance schedule with new next date if state is done
+        if (data.state === 'done') {
+            const { error: scheduleError } = await supabase
+                .from('maintenance_schedule')
+                .update({
+                    next_date: calculateNextDate(data.frequency || 'monthly'),
+                    state: 'done',
+                    last_updated: new Date().toISOString(),
+                    updated_by: 'manual'
+                })
+                .eq('schedule_id', data.schedule_id);
 
-    if (updateError) return { error: updateError };
-    console.log("herrrrrree", updateError)
+            if (scheduleError) throw scheduleError;
+        }
 
-    const { data: cordinator } = await supabase
-        .rpc('get_lab_matched_users', {
-            p_lab_id: lab_id
-        });
-    const lab = await getLaboratoryById(lab_id);
-    if (!isValidManagerId(lab?.manager_id)) {
-        console.warn('Invalid or missing manager_id');
-        return { error: new Error('Invalid manager_id') };
-    }
+        const { data: cordinator } = await supabase
+            .rpc('get_lab_matched_users', {
+                p_lab_id: lab_id
+            });
+        const lab = await getLaboratoryById(lab_id);
+        if (!isValidManagerId(lab?.manager_id)) {
+            console.warn('Invalid or missing manager_id');
+            return { error: new Error('Invalid manager_id') };
+        }
 
-    const { data: userData, error: userError } = await supabase.auth
-        .admin.getUserById(lab.manager_id);
+        const { data: userData, error: userError } = await supabase.auth
+            .admin.getUserById(lab.manager_id);
 
-    const cordinator_email = cordinator?.[0]?.email;
-    const manager_email = userData?.user?.email;
+        const cordinator_email = cordinator?.[0]?.email;
+        const manager_email = userData?.user?.email;
 
-    const validEmails = filterValidEmails([
-        manager_email,
-        'micronboy632@gmail.com',
-        cordinator_email
-    ]);
+        const validEmails = filterValidEmails([
+            manager_email,
+            'micronboy632@gmail.com',
+            cordinator_email
+        ]);
 
-    if (validEmails.length === 0) {
-        console.warn('No valid email addresses found for notification');
+        if (validEmails.length === 0) {
+            console.warn('No valid email addresses found for notification');
+            return { data: result };
+        }
+
+        const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
+
+        const emailContent = {
+            to: validEmails,
+            title: `Equipment Maintenance Status Update: ${data.state}`,
+            body: `
+                Equipment maintenance status has been updated to: ${data.state}<br/>
+                Description: ${data.description}<br/>
+                Next maintenance date: ${data.next_maintenance_date}<br/>
+                <br/>
+                View equipment details: <a href="${equipmentUrl}">Click here</a>
+            `
+        };
+
+        await updateMaintenanceSchedules();
+        await sendEmail(emailContent);
+
         return { data: result };
+    } catch (error) {
+        console.error('Error in addMaintenanceHistory:', error);
+        throw error;
     }
-
-    const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
-
-    const emailContent = {
-        to: validEmails,
-        title: `Equipment Maintenance Status Update: ${data.state}`,
-        body: `
-            Equipment maintenance status has been updated to: ${data.state}<br/>
-            Description: ${data.description}<br/>
-            Next maintenance date: ${data.next_maintenance_date}<br/>
-            <br/>
-            View equipment details: <a href="${equipmentUrl}">Click here</a>
-        `
-    };
-
-    await updateMaintenanceSchedules();
-    await sendEmail(emailContent);
-
-    return { data: result };
 }
 
 function isValidManagerId(id: string | undefined): id is string {
@@ -149,7 +166,7 @@ function isValidManagerId(id: string | undefined): id is string {
 
 // Similar changes for addCalibrationHistory function
 export async function addCalibrationHistory(
-    data: Omit<EquipmentHistory, 'history_id' | 'schedule_id'>,
+    data: CalibrationHistoryInput,
     lab_id: number,
     equipment_id: number
 ) {
@@ -172,8 +189,20 @@ export async function addCalibrationHistory(
 
         if (historyError) throw historyError;
 
-        // Update calibration schedules
-        await updateCalibrationSchedules();
+        // Update calibration schedule with new next date if state is calibrated
+        if (data.state === 'calibrated') {
+            const { error: scheduleError } = await supabase
+                .from('calibration_schedule')
+                .update({
+                    next_date: calculateNextDate(data.frequency || 'monthly'),
+                    state: 'calibrated',
+                    last_updated: new Date().toISOString(),
+                    updated_by: 'manual'
+                })
+                .eq('calibration_schedule_id', data.calibration_schedule_id);
+
+            if (scheduleError) throw scheduleError;
+        }
 
         // Rest of the function remains the same...
         return { data: historyData };
@@ -185,7 +214,7 @@ export async function addCalibrationHistory(
 
 // Add external control history
 export async function addExternalControlHistory(
-    data: Omit<EquipmentHistory, 'history_id' | 'calibration_schedule_id' | 'schedule_id'>,
+    data: ExternalControlHistoryInput,
     lab_id: number,
     equipment_id: number
 ) {
@@ -206,6 +235,21 @@ export async function addExternalControlHistory(
             .single();
 
         if (historyError) throw historyError;
+
+        // Update external control with new next date if state is Done
+        if (data.state === 'Done' as any) { // Type assertion to fix comparison
+            const { error: scheduleError } = await supabase
+                .from('external_control')
+                .update({
+                    next_date: calculateNextDate(data.frequency || 'monthly'),
+                    state: 'Done',
+                    last_updated: new Date().toISOString(),
+                    updated_by: 'manual'
+                })
+                .eq('control_id', data.external_control_id);
+
+            if (scheduleError) throw scheduleError;
+        }
 
         // Send notification emails
         const { data: cordinator } = await supabase

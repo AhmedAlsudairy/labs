@@ -1,3 +1,12 @@
+import { 
+  FrequencyEnum, 
+  MaintenanceStateEnum, 
+  CalibrationStateEnum, 
+  ExternalControlStateEnum, 
+  MaintenanceRoleEnum 
+} from "@/types";
+
+// Keep existing types for compatibility
 export type MaintenanceState = 'done' | 'need maintance' | 'late maintance';
 export type CalibrationState = 'calibrated' | 'need calibration' | 'late calibration';
 export type ExternalControlState = 'Done' | 'Final Date' | 'E.Q.C Reception';
@@ -6,23 +15,24 @@ export type MaintenanceRole = 'lab in charge' | 'biomedical' | 'company engineer
 
 export type RecordType = 'maintenance' | 'calibration' | 'external_control' | 'downtime';
 
+// Use the enums in new type definitions
 export type MaintenanceRecord = {
   id: number;
   date: string;
-  frequency: Frequency;
-  responsible: MaintenanceRole;
+  frequency: FrequencyEnum;
+  responsible: MaintenanceRoleEnum;
   description: string;
-  state: MaintenanceState;
+  state: MaintenanceStateEnum;
   equipmentId: number;
 };
 
 export type CalibrationRecord = {
   id: number;
   date: string;
-  frequency: Frequency;
-  responsible: MaintenanceRole;
+  frequency: FrequencyEnum;
+  responsible: MaintenanceRoleEnum;
   description: string;
-  state: CalibrationState;
+  state: CalibrationStateEnum;
   equipmentId: number;
 };
 
@@ -38,9 +48,9 @@ export type ExternalControl = {
   control_id: number;
   equipment_id: number;
   next_date: string;
-  frequency: Frequency;
-  state: ExternalControlState;
-  responsible: MaintenanceRole;
+  frequency: FrequencyEnum;
+  state: ExternalControlStateEnum;
+  responsible: MaintenanceRoleEnum;
   description: string;
   updated_by: string;
   last_updated: string;
@@ -56,7 +66,7 @@ export interface ExternalControlHistory {
   work_performed?: string;
   technician_notes?: string;
   parts_used?: string;
-  external_control_state: ExternalControlState;
+  external_control_state: ExternalControlStateEnum;
   created_at: Date;
   updated_at: Date;
 }

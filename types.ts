@@ -147,7 +147,8 @@ export type ExternalControl = {
   frequency?: Frequency;
 };
 
-export type CalibrationData = {
+// Rename this type to avoid conflict
+export type CalibrationSchedule = {
   id: number;
   date?: string;
   equipmentId: number;
@@ -158,13 +159,49 @@ export type CalibrationData = {
 };
 
 // types.ts
+export enum FrequencyEnum {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  BIWEEKLY = 'biweekly',
+  MONTHLY = 'monthly',
+  BIMONTHLY = 'bimonthly',
+  QUARTERLY = 'quarterly',
+  BIANNUAL = 'biannual',
+  ANNUALLY = 'annually'
+}
+
+export enum MaintenanceStateEnum {
+  DONE = 'done',
+  NEED_MAINTENANCE = 'need maintance',
+  LATE_MAINTENANCE = 'late maintance'
+}
+
+export enum CalibrationStateEnum {
+  CALIBRATED = 'calibrated',
+  NEED_CALIBRATION = 'need calibration',
+  LATE_CALIBRATION = 'late calibration'
+}
+
+export enum ExternalControlStateEnum {
+  DONE = 'Done',
+  FINAL_DATE = 'Final Date',
+  EQC_RECEPTION = 'E.Q.C Reception'
+}
+
+export enum MaintenanceRoleEnum {
+  LAB_IN_CHARGE = 'lab in charge',
+  BIOMEDICAL = 'biomedical',
+  COMPANY_ENGINEER = 'company engineer',
+  LAB_TECHNICIAN = 'lab technician'
+}
+
+// Keep the old types for backward compatibility
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
-export type maintanace_state= 'done' | 'need maintance' | 'late maintance'|'calibrated'|'need calibration'|'late calibration'  | 'Final Date' | 'E.Q.C Reception';
+export type maintanace_state = 'done' | 'need maintance' | 'late maintance' | 'calibrated' | 'need calibration' | 'late calibration' | 'Final Date' | 'E.Q.C Reception';
+export type maintanace_role = 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';
 
 export type user_category= "food" | "animal" | "human"
 
-
-export type maintanace_role= 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';
 
 export type MaintenanceRecord = {
   id: number;
@@ -187,6 +224,7 @@ interface BaseEquipmentHistory {
   state?: maintanace_state;
   description: string;
   technician_notes: string;
+  frequency?: Frequency; // Add frequency to base type
 }
 
 // Maintenance specific interface
@@ -195,9 +233,11 @@ export interface MaintenanceEquipmentHistory extends BaseEquipmentHistory {
   work_performed: string;
   parts_used: string;
   next_maintenance_date: Date;
+  frequency: Frequency; // Make it required for maintenance
   calibration_schedule_id?: never;
   calibration_results?: never;
   next_calibration_date?: never;
+  external_control_id?: never;
 }
 
 // Calibration specific interface
@@ -205,11 +245,33 @@ export interface CalibrationEquipmentHistory extends BaseEquipmentHistory {
   calibration_schedule_id: number;
   calibration_results: string;
   next_calibration_date: Date;
+  frequency: Frequency; // Make it required for calibration
   schedule_id?: never;
   work_performed?: never;
   parts_used?: never;
   next_maintenance_date?: never;
+  external_control_id?: never;
 }
 
-// Union type for both types of histories
-export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmentHistory;
+// External control specific interface
+export interface ExternalControlHistory extends BaseEquipmentHistory {
+  external_control_id: number;
+  work_performed: string;
+  parts_used: string;
+  next_date: Date;
+  frequency: Frequency; // Make it required for external control
+  external_control_state: maintanace_state;
+  schedule_id?: never;
+  calibration_schedule_id?: never;
+  next_maintenance_date?: never;
+  next_calibration_date?: never;
+  calibration_results?: never;
+}
+
+// Types for form data submission
+export type MaintenanceData = Omit<MaintenanceEquipmentHistory, 'history_id'>;
+export type CalibrationData = Omit<CalibrationEquipmentHistory, 'history_id'>;
+export type ExternalControlData = Omit<ExternalControlHistory, 'history_id'>;
+
+// Union type for all types of histories
+export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmentHistory | ExternalControlHistory;
