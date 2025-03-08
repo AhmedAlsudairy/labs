@@ -1,6 +1,6 @@
 'use server';
 
-import { ExternalControl } from "@/lib/types";
+import { ExternalControl, Frequency } from "@/lib/types";
 import { calculateNextDate } from "@/utils/utils";
 import { createClient } from '@supabase/supabase-js';
 
@@ -26,12 +26,14 @@ export async function getExternalControlRecords(equipment_id: number) {
 
 export async function addExternalControl(data: Omit<ExternalControl, 'control_id'>) {
   try {
-    const nextDate = calculateNextDate(data.frequency, data.next_date ?? new Date());
+    // Convert string date to Date object before passing to calculateNextDate
+    const dateObj = data.next_date ? new Date(data.next_date) : new Date();
+    const nextDate = calculateNextDate(data.frequency, dateObj);
 
     const { error } = await supabase
       .from('external_control')
       .insert([{
-        next_date: nextDate,
+        next_date: nextDate.toISOString().split('T')[0], // Convert Date back to string for DB
         description: data.description,
         frequency: data.frequency,
         responsible: data.responsible,
@@ -51,9 +53,14 @@ export async function addExternalControl(data: Omit<ExternalControl, 'control_id
 
 export async function updateExternalControl(control_id: number, data: Partial<ExternalControl>) {
   try {
-    let nextDate = data.next_date;
+    let nextDate: string = data.next_date || '';
+    
     if (data.next_date && data.frequency) {
-      nextDate = calculateNextDate(data.frequency, data.next_date ?? new Date());
+      // Convert string date to Date object
+      const dateObj = new Date(data.next_date);
+      const calculatedDate = calculateNextDate(data.frequency, dateObj);
+      // Convert back to string format for DB
+      nextDate = calculatedDate.toISOString().split('T')[0];
     }
 
     const { error } = await supabase

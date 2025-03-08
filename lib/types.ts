@@ -48,9 +48,9 @@ export type ExternalControl = {
   control_id: number;
   equipment_id: number;
   next_date: string;
-  frequency: FrequencyEnum;
-  state: ExternalControlStateEnum;
-  responsible: MaintenanceRoleEnum;
+  frequency: Frequency; // Changed from FrequencyEnum to Frequency
+  state: ExternalControlState;
+  responsible: MaintenanceRole;
   description: string;
   updated_by: string;
   last_updated: string;

@@ -1,25 +1,25 @@
-import { Frequency, FrequencyEnum } from "@/types";
+import { Frequency } from "@/types";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 
 export function calculateNextDate(frequency: Frequency, currentDate: Date = new Date()): Date {
   const date = new Date(currentDate);
   
   switch (frequency) {
-    case FrequencyEnum.DAILY:
+    case 'daily':
       return addDays(date, 1);
-    case FrequencyEnum.WEEKLY:
+    case 'weekly':
       return addDays(date, 7);
-    case FrequencyEnum.BIWEEKLY:
+    case 'biweekly':
       return addDays(date, 14);
-    case FrequencyEnum.MONTHLY:
+    case 'monthly':
       return addMonths(date, 1);
-    case FrequencyEnum.BIMONTHLY:
+    case 'bimonthly':
       return addMonths(date, 2);
-    case FrequencyEnum.QUARTERLY:
+    case 'quarterly':
       return addMonths(date, 3);
-    case FrequencyEnum.BIANNUAL:
+    case 'biannual':
       return addMonths(date, 6);
-    case FrequencyEnum.ANNUALLY:
+    case 'annually':
       return addYears(date, 1);
     default:
       return date;

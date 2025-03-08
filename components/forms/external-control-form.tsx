@@ -97,10 +97,14 @@ export function ExternalControlForm({
     try {
       setIsSubmitting(true)
       await addExternalControl({
-        ...values,
-        equipment_id,
+        equipment_id: equipment_id,
         updated_by: 'manual' as UpdatedBy,
         last_updated: new Date().toISOString(),
+        description: values.description,
+        frequency: values.frequency,
+        state: values.state,
+        next_date: values.next_date,
+        responsible: values.responsible,
       })
       toast({
         title: "Success",

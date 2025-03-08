@@ -3,7 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import { sendEmail } from '@/utils/resend/email';
-import {   } from '@/types';
+import { Frequency } from "@/types";
 import { ExternalControlState } from '@/lib/types';
 
 const supabase = createClient(
@@ -11,7 +11,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
+// Remove duplicate type definitions and use imported types
 type MaintenanceState = 'done' | 'need maintance' | 'late maintance';
 type CalibrationState = 'calibrated' | 'need calibration' | 'late calibration';
 
@@ -20,27 +20,11 @@ interface ScheduleUpdate {
   updated_by: 'manual' | 'automatic';
 }
 
+// Replace local function with imported one
+import { calculateNextDate as calcNextDate } from "@/utils/date-utils";
+
 function calculateNextDate(currentDate: Date, frequency: Frequency): Date {
-  switch (frequency) {
-    case 'daily':
-      return addDays(currentDate, 1);
-    case 'weekly':
-      return addWeeks(currentDate, 1);
-    case 'biweekly':
-      return addWeeks(currentDate, 2);
-    case 'monthly':
-      return addMonths(currentDate, 1);
-    case 'bimonthly':
-      return addMonths(currentDate, 2);
-    case 'quarterly':
-      return addMonths(currentDate, 3);
-    case 'biannual':
-      return addMonths(currentDate, 6);
-    case 'annually':
-      return addYears(currentDate, 1);
-    default:
-      return currentDate;
-  }
+  return calcNextDate(frequency, currentDate);
 }
 
 function determineMaintenanceState(nextDate: Date): MaintenanceState {

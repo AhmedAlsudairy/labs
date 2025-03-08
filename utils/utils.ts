@@ -1,5 +1,6 @@
 import { Frequency, maintanace_state } from "@/types";
 import { redirect } from "next/navigation";
+import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 
 /**
  * Redirects to a specified path with an encoded message as a query parameter.
@@ -31,50 +32,32 @@ export const formatDeviceAge = (receiptDate: Date, currentDate: Date) => {
   }
 };
 
-export function calculateNextDate(frequency: Frequency, currentDate?: string | Date): string {
-  if (currentDate === "today") {
-    currentDate = new Date();
-  }
-  
-  const date = currentDate 
-    ? new Date(currentDate) 
-    : new Date();
-  
-  // Always ensure we're working with a fresh copy of the date
-  const nextDate = new Date(date);
+// Ensure this has the same signature as date-utils.ts version for consistency
+export function calculateNextDate(frequency: Frequency, currentDate: Date = new Date()): Date {
+  // Use the implementation from date-utils.ts for consistency
+  const date = new Date(currentDate);
   
   switch (frequency) {
     case 'daily':
-      nextDate.setDate(date.getDate() + 1);
-      break;
+      return addDays(date, 1);
     case 'weekly':
-      date.setDate(date.getDate() + 7);
-      break;
+      return addDays(date, 7);
     case 'biweekly':
-      date.setDate(date.getDate() + 14);
-      break;
+      return addDays(date, 14);
     case 'monthly':
-      date.setMonth(date.getMonth() + 1);
-      break;
+      return addMonths(date, 1);
     case 'bimonthly':
-      date.setMonth(date.getMonth() + 2);
-      break;
+      return addMonths(date, 2);
     case 'quarterly':
-      date.setMonth(date.getMonth() + 3);
-      break;
+      return addMonths(date, 3);
     case 'biannual':
-      date.setMonth(date.getMonth() + 6);
-      break;
+      return addMonths(date, 6);
     case 'annually':
-      date.setFullYear(date.getFullYear() + 1);
-      break;
+      return addYears(date, 1);
     default:
-      return currentDate ? new Date(currentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      return date;
   }
-  
-  return nextDate.toISOString().split('T')[0];
 }
-
 
 // export const getStateBackgroundColor = (state: maintanace_state) => {
 //   switch (state) {

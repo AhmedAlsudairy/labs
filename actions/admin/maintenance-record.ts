@@ -1,7 +1,8 @@
 'use server';
 
 import { MaintenanceRecord } from "@/types";
-import { calculateNextDate } from "@/utils/utils";
+// Update the import path to use the correct utility file
+import { calculateNextDate } from "@/utils/date-utils";
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,9 +16,14 @@ export async function updateMaintenanceRecord(
     recordData: Partial<MaintenanceRecord>
   ): Promise<MaintenanceRecord> {
     // If date and frequency provided, calculate next date
-    let nextDate = recordData.date;
+    let nextDate: string | undefined = recordData.date;
+    
     if (recordData.date && recordData.frequency) {
-      nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
+      // Convert string date to Date object for calculation
+      const dateObj = new Date(recordData.date);
+      const calculatedDate = calculateNextDate(recordData.frequency, dateObj);
+      // Convert back to string for DB
+      nextDate = calculatedDate.toISOString().split('T')[0];
     }
   
     const { data, error } = await supabase
@@ -61,13 +67,17 @@ export async function updateMaintenanceRecord(
   export async function addMaintenanceRecord(
     recordData: Omit<MaintenanceRecord, 'id'>
   ): Promise<MaintenanceRecord> {
-    const nextDate = calculateNextDate( recordData.frequency,recordData.date ?? new Date());
+    // Convert string date to Date object for calculation
+    const dateObj = recordData.date ? new Date(recordData.date) : new Date();
+    const nextDate = calculateNextDate(recordData.frequency, dateObj);
+    // Convert result back to string for DB
+    const nextDateString = nextDate.toISOString().split('T')[0];
     
     const { data, error } = await supabase
       .from('maintenance_schedule')
       .insert({
         equipment_id: recordData.equipmentId,
-        next_date: nextDate,
+        next_date: nextDateString,
         frequency: recordData.frequency,
         description: recordData.description,
         responsible: recordData.responsible,

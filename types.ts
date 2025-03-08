@@ -144,7 +144,7 @@ export type ExternalControl = {
   description?: string;
   state?: maintanace_state;
   responsible?: maintanace_role;
-  frequency?: Frequency;
+  frequency?: Frequency; // Changed from FrequencyEnum to Frequency
 };
 
 // Rename this type to avoid conflict
