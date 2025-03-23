@@ -40,7 +40,7 @@ export default function MaintenanceRecordRow({
           return 'success';
         case 'Final Date':
           return 'warning';
-        case 'E.Q.C Reception':
+        case 'E.Q.C  Reception':
           return 'destructive';
         default:
           return 'default';

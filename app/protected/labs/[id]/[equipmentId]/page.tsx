@@ -370,20 +370,21 @@ const InfoItem = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const StateIndicator = ({ state }: { state: maintanace_state }) => {
-  const variants: Record<
-    maintanace_state,
-    "success" | "warning" | "destructive"
-  > = {
-    done: "success",
-    "need maintance": "warning",
-    "late maintance": "destructive",
-    calibrated: "success",
-    "need calibration": "warning",
-    "late calibration": "destructive",
-    "Final Date": "warning",
-    "E.Q.C Reception": "destructive"
+const StateIndicator = ({ state }: { state: string }) => {
+  // Handle all possible state values without relying on the type
+  const getVariant = (stateValue: string): "success" | "warning" | "destructive" | "default" => {
+    // Maintenance & calibration states
+    if (stateValue === "done" || stateValue === "calibrated") {
+      return "success";
+    }
+    if (stateValue === "need maintance" || stateValue === "need calibration" || stateValue === "Final Date") {
+      return "warning";
+    }
+    if (stateValue === "late maintance" || stateValue === "late calibration" || stateValue === "E.Q.C  Reception") {
+      return "destructive";
+    }
+    return "default";
   };
 
-  return <Badge variant={variants[state]}>{state}</Badge>;
+  return <Badge variant={getVariant(state)}>{state}</Badge>;
 };

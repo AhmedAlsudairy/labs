@@ -67,14 +67,14 @@ function determineExternalControlState(nextDate: Date): ExternalControlState {
   // Safely handle invalid dates
   if (!nextDate || isNaN(nextDate.getTime())) {
     console.warn('Invalid date provided to determineExternalControlState:', nextDate);
-    return 'E.Q.C Reception';
+    return 'E.Q.C  Reception';
   }
   
   const today = new Date();
   const daysDiff = (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
   
   if (daysDiff < 0) {
-    return 'E.Q.C Reception'; // Red - Late
+    return 'E.Q.C  Reception'; // Red - Latee
   } else if (daysDiff <= 7) {
     return 'Final Date'; // Yellow - In date but close
   }
@@ -145,22 +145,52 @@ export async function updateMaintenanceSchedules() {
             newNextDate = calculateNextDate(new Date(), schedule.frequency);
           }
 
-          // Create a transaction to update both maintenance_schedule and equipment_history
-          const { data, error: updateError } = await supabase.rpc('update_maintenance_schedule_with_history', {
-            p_schedule_id: schedule.schedule_id,
-            p_equipment_id: schedule.equipment_id,
-            p_state: state,
-            p_next_date: newNextDate,
-            p_previous_state: previousState,
-            p_description: `Maintenance schedule state changed from ${previousState} to ${state}`,
-            p_work_performed: state === 'done' ? 'Automatic maintenance completion' : null
-          });
+          // Update maintenance schedule and create history separately instead of using RPC function
+          try {
+            // 1. Update the maintenance schedule
+            const { error: updateError } = await supabase
+              .from('maintenance_schedule')
+              .update({
+                next_date: newNextDate,
+                state: state,
+                last_updated: new Date().toISOString(),
+                updated_by: 'automatic'
+              })
+              .eq('schedule_id', schedule.schedule_id);
 
-          if (updateError) {
-            console.error('Error updating maintenance schedule:', updateError);
+            if (updateError) {
+              console.error('Error updating maintenance schedule:', updateError);
+              failedSchedules.push({
+                id: schedule.schedule_id,
+                error: updateError
+              });
+              continue;
+            }
+
+            // 2. Create a history record
+            const { error: historyError } = await supabase
+              .from('equipment_history')
+              .insert({
+                schedule_id: schedule.schedule_id,
+                equipment_id: schedule.equipment_id,
+                performed_date: new Date().toISOString(),
+                completed_date: new Date().toISOString(),
+                state: state,
+                description: `Maintenance schedule state changed from ${previousState} to ${state}`,
+                work_performed: state === 'done' ? 'Automatic maintenance completion' : '',
+                next_maintenance_date: newNextDate
+              });
+
+            if (historyError) {
+              console.error('Error creating maintenance history:', historyError);
+              // Continue with the process even if history creation fails
+              // We've already updated the schedule successfully
+            }
+          } catch (error) {
+            console.error('Error in maintenance update process:', error);
             failedSchedules.push({
               id: schedule.schedule_id,
-              error: updateError
+              error
             });
             continue;
           }
@@ -244,22 +274,52 @@ export async function updateCalibrationSchedules() {
             newNextDate = calculateNextDate(new Date(), schedule.frequency);
           }
 
-          // Create a transaction to update both calibration_schedule and equipment_history
-          const { data, error: updateError } = await supabase.rpc('update_calibration_schedule_with_history', {
-            p_calibration_schedule_id: schedule.calibration_schedule_id,
-            p_equipment_id: schedule.equipment_id,
-            p_state: state,
-            p_next_date: newNextDate,
-            p_previous_state: previousState,
-            p_description: `Calibration schedule state changed from ${previousState} to ${state}`,
-            p_calibration_results: state === 'calibrated' ? 'Automatic calibration completion' : null
-          });
+          // Update calibration schedule and create history separately instead of using RPC function
+          try {
+            // 1. Update the calibration schedule
+            const { error: updateError } = await supabase
+              .from('calibration_schedule')
+              .update({
+                next_date: newNextDate,
+                state: state,
+                last_updated: new Date().toISOString(),
+                updated_by: 'automatic'
+              })
+              .eq('calibration_schedule_id', schedule.calibration_schedule_id);
 
-          if (updateError) {
-            console.error('Error updating calibration schedule:', updateError);
+            if (updateError) {
+              console.error('Error updating calibration schedule:', updateError);
+              failedSchedules.push({
+                id: schedule.calibration_schedule_id,
+                error: updateError
+              });
+              continue;
+            }
+
+            // 2. Create a history record
+            const { error: historyError } = await supabase
+              .from('equipment_history')
+              .insert({
+                calibration_schedule_id: schedule.calibration_schedule_id,
+                equipment_id: schedule.equipment_id,
+                performed_date: new Date().toISOString(),
+                completed_date: new Date().toISOString(),
+                state: state,
+                description: `Calibration schedule state changed from ${previousState} to ${state}`,
+                calibration_results: state === 'calibrated' ? 'Automatic calibration completion' : '',
+                next_calibration_date: newNextDate
+              });
+
+            if (historyError) {
+              console.error('Error creating calibration history:', historyError);
+              // Continue with the process even if history creation fails
+              // We've already updated the schedule successfully
+            }
+          } catch (error) {
+            console.error('Error in calibration update process:', error);
             failedSchedules.push({
               id: schedule.calibration_schedule_id,
-              error: updateError
+              error
             });
             continue;
           }
@@ -336,7 +396,7 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
       try {
         // Skip if recently updated manually
         if (control.updated_by === 'manual' && 
-            (control.state === 'Final Date' || control.state === 'E.Q.C Reception')) {
+            (control.state === 'Final Date' || control.state === 'E.Q.C  Reception')) {
           console.log(`Skipping external control ${control.control_id} - manually marked as ${control.state}`);
           continue;
         }
@@ -352,21 +412,52 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
             newNextDate = calculateNextDate(new Date(), control.frequency);
           }
 
-          // Create a transaction to update both external_control and equipment_history
-          const { data, error: updateError } = await supabase.rpc('update_external_control_with_history', {
-            p_control_id: control.control_id,
-            p_equipment_id: control.equipment_id,
-            p_state: state,
-            p_next_date: newNextDate,
-            p_previous_state: previousState,
-            p_description: `External control state changed from ${previousState} to ${state}`
-          });
+          // Update external control and create history separately instead of using RPC function
+          try {
+            // 1. Update the external control record
+            const { error: updateError } = await supabase
+              .from('external_control')
+              .update({
+                next_date: newNextDate,
+                state: state,
+                last_updated: new Date().toISOString(),
+                updated_by: 'automatic'
+              })
+              .eq('control_id', control.control_id);
 
-          if (updateError) {
-            console.error('Error updating external control:', updateError);
+            if (updateError) {
+              console.error('Error updating external control:', updateError);
+              failedControls.push({
+                id: control.control_id,
+                error: updateError
+              });
+              continue;
+            }
+
+            // 2. Create a history record
+            const { error: historyError } = await supabase
+              .from('equipment_history')
+              .insert({
+                external_control_id: control.control_id,
+                equipment_id: control.equipment_id,
+                performed_date: new Date().toISOString(),
+                completed_date: new Date().toISOString(),
+                state: state, // This is maintanace_state
+                external_control_state: state, // Use the dedicated column for external control state
+                description: `External control state changed from ${previousState} to ${state}`,
+                work_performed: state === 'Done' ? 'Automatic completion' : ''
+              });
+
+            if (historyError) {
+              console.error('Error creating external control history:', historyError);
+              // Continue with the process even if history creation fails
+              // We've already updated the external control successfully
+            }
+          } catch (error) {
+            console.error('Error in external control update process:', error);
             failedControls.push({
               id: control.control_id,
-              error: updateError
+              error
             });
             continue;
           }
@@ -480,7 +571,7 @@ async function sendExternalControlNotification(control: any, state: ExternalCont
   const stateColors = {
     'Done': 'green',
     'Final Date': 'yellow',
-    'E.Q.C Reception': 'red'
+    'E.Q.C  Reception': 'red'
   };
 
   const emailContent = {

@@ -6,6 +6,7 @@ import * as z from "zod"
 import { Frequency } from "@/types"
 
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Form,
   FormControl,
@@ -149,13 +150,13 @@ export function AddCalibrationRecordForm({ equipmentId, onSuccess }: AddMaintena
           )}
         />
 
-        <Button 
+        <LoadingButton 
           type="submit" 
           className="w-full"
-          disabled={isSubmitting}
+          loading={isSubmitting}
         >
-          {isSubmitting ? "Adding..." : "Add Maintenance Record"}
-        </Button>
+          {"Add Calibration Record"}
+        </LoadingButton>
       </form>
     </Form>
   )

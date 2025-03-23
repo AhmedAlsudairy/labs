@@ -29,10 +29,27 @@ export async function addExternalControl(data: Omit<ExternalControl, 'control_id
     // Convert string date to Date object before passing to calculateNextDate
     const dateObj = data.next_date ? new Date(data.next_date) : new Date();
     const nextDate = calculateNextDate(data.frequency, dateObj);
-
+    
+    // First, get the current max control_id from the database
+    const { data: maxIdResult, error: maxIdError } = await supabase
+      .from('external_control')
+      .select('control_id')
+      .order('control_id', { ascending: false })
+      .limit(1);
+    
+    if (maxIdError) {
+      console.error('Error fetching max control_id:', maxIdError);
+      throw maxIdError;
+    }
+    
+    // Calculate the next control_id (1 if there are no records, otherwise max + 1)
+    const nextControlId = maxIdResult && maxIdResult.length > 0 ? maxIdResult[0].control_id + 1 : 1;
+    
+    // Now insert with the manually calculated control_id
     const { error } = await supabase
       .from('external_control')
       .insert([{
+        control_id: nextControlId, // Add the manually generated ID
         next_date: nextDate.toISOString().split('T')[0], // Convert Date back to string for DB
         description: data.description,
         frequency: data.frequency,

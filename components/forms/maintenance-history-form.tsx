@@ -44,7 +44,7 @@ interface MaintenanceHistoryFormProps {
 
 const maintainanceStates = ["done", "need maintance", "late maintance"] as const;
 const calibrationStates = ["calibrated", "need calibration", "late calibration"] as const;
-const externalControlStates = ["Done", "Final Date", "E.Q.C Reception"] as const;
+const externalControlStates = ["Done", "Final Date", "E.Q.C  Reception"] as const;
 
 const baseSchema = (mode: 'maintenance' | 'calibration' | 'external_control') => ({
   performed_date: z.date(),
@@ -158,7 +158,7 @@ export function MaintenanceHistoryForm({
         ? "done" 
         : mode === 'calibration'
         ? "calibrated"
-        : "E.Q.C Reception",
+        : "Done",
       ...(mode === 'maintenance' ? {
         work_performed: "",
         parts_used: "",
@@ -313,7 +313,7 @@ export function MaintenanceHistoryForm({
           ? "done" 
           : mode === 'calibration'
           ? "calibrated"
-          : "E.Q.C Reception",
+          : "Done",
         ...(mode === 'maintenance' ? {
           work_performed: "",
           parts_used: "",
@@ -406,7 +406,7 @@ export function MaintenanceHistoryForm({
                     <>
                       <SelectItem value="Done">Done</SelectItem>
                       <SelectItem value="Final Date">Final Date</SelectItem>
-                      <SelectItem value="E.Q.C Reception">E.Q.C Reception</SelectItem>
+                      <SelectItem value="E.Q.C  Reception">E.Q.C  Reception</SelectItem>
                     </>
                   )}
                 </SelectContent>

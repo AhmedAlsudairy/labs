@@ -40,11 +40,7 @@ export function MaintenanceHistoryTable({equipment_id, lab_id, mode, scheduleId,
   }, [mode, scheduleId]);
 
   const isCalibrationHistory = (history: EquipmentHistory): history is CalibrationEquipmentHistory => {
-    return history && 'calibration_results' in history;
-  };
-
-  const isMaintenanceHistory = (history: EquipmentHistory): history is MaintenanceEquipmentHistory => {
-    return history && 'work_performed' in history;
+    return 'calibration_results' in history;
   };
 
   return (
@@ -141,27 +137,18 @@ export function MaintenanceHistoryTable({equipment_id, lab_id, mode, scheduleId,
                   </TableCell>
                   <TableCell 
                     className="cursor-pointer group"
-                    onClick={() => {
-                      let content = '';
-                      if (mode === 'calibration' && isCalibrationHistory(history)) {
-                        content = history.calibration_results || '';
-                      } else if (mode === 'maintenance' && isMaintenanceHistory(history)) {
-                        content = history.work_performed || '';
-                      }
-                      
-                      setSelectedDescription({
-                        title: mode === 'calibration' ? 'Calibration Results' : 'Work Performed',
-                        description: content
-                      });
-                    }}
+                    onClick={() => setSelectedDescription({
+                      title: mode === 'calibration' ? 'Calibration Results' : 'Work Performed',
+                      description: isCalibrationHistory(history) 
+                        ? history.calibration_results 
+                        : history.work_performed
+                    })}
                   >
                     <div className="flex items-center gap-2">
                       <span className="truncate max-w-[200px] text-sm text-gray-600 dark:text-gray-300">
-                        {mode === 'calibration' && isCalibrationHistory(history) 
+                        {isCalibrationHistory(history) 
                           ? history.calibration_results 
-                          : mode === 'maintenance' && isMaintenanceHistory(history)
-                          ? history.work_performed
-                          : ''}
+                          : history.work_performed}
                       </span>
                       <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400" />
                     </div>

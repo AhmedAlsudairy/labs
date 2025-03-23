@@ -41,7 +41,7 @@ const frequencies: Frequency[] = [
 const states: ExternalControlState[] = [
   'Done',
   'Final Date',
-  'E.Q.C Reception'
+  'E.Q.C  Reception'
 ]
 
 const roles: MaintenanceRole[] = [
@@ -51,14 +51,16 @@ const roles: MaintenanceRole[] = [
   'lab technician'
 ]
 
+// Ensure the schema uses the exact same values as our type definitions
 const formSchema = z.object({
   next_date: z.string().min(1, "Next date is required"),
-  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'biannual', 'annually']),
-  state: z.enum(['Done', 'Final Date', 'E.Q.C Reception']),
-  responsible: z.enum(['lab in charge', 'biomedical', 'company engineer', 'lab technician']),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'biannual', 'annually']) as z.ZodEnum<[Frequency, ...Frequency[]]>,
+  state: z.enum(['Done', 'Final Date', 'E.Q.C  Reception']) as z.ZodEnum<[ExternalControlState, ...ExternalControlState[]]>,
+  responsible: z.enum(['lab in charge', 'biomedical', 'company engineer', 'lab technician']) as z.ZodEnum<[MaintenanceRole, ...MaintenanceRole[]]>,
   description: z.string().min(1, "Description is required"),
 })
 
+// Use the inferred type from our schema
 type FormValues = z.infer<typeof formSchema>
 
 type UpdatedBy = 'manual' | 'automatic';
@@ -88,24 +90,24 @@ export function ExternalControlForm({
     defaultValues: {
       next_date: initialData?.next_date || new Date().toISOString().split('T')[0],
       frequency: initialData?.frequency || "monthly",
-      state: initialData?.state || "E.Q.C Reception",
+      state: initialData?.state || "E.Q.C  Reception",
       responsible: initialData?.responsible || "lab technician",
       description: initialData?.description || "",
     },
   })
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
       setIsSubmitting(true)
       await addExternalControl({
         equipment_id: equipment_id,
         updated_by: 'manual' as UpdatedBy,
         last_updated: new Date().toISOString(),
-        description: values.description,
-        frequency: values.frequency,
-        state: values.state,
-        next_date: values.next_date,
-        responsible: values.responsible,
+        description: data.description,
+        frequency: data.frequency,
+        state: data.state,
+        next_date: data.next_date,
+        responsible: data.responsible,
       })
       toast({
         title: "Success",

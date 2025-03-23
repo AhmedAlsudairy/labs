@@ -9,7 +9,7 @@ import {
 // Keep existing types for compatibility
 export type MaintenanceState = 'done' | 'need maintance' | 'late maintance';
 export type CalibrationState = 'calibrated' | 'need calibration' | 'late calibration';
-export type ExternalControlState = 'Done' | 'Final Date' | 'E.Q.C Reception';
+export type ExternalControlState = 'Done' | 'Final Date' | 'E.Q.C  Reception';
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
 export type MaintenanceRole = 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';
 

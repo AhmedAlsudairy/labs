@@ -48,7 +48,7 @@ const responsibleOptions: MaintenanceRole[] = [
 const externalControlStates: ExternalControlState[] = [
   'Done',
   'Final Date',
-  'E.Q.C Reception'
+  'E.Q.C  Reception'
 ]
 
 const maintenanceStates: MaintenanceState[] = [
@@ -69,7 +69,7 @@ const formSchema = z.object({
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'biannual', 'annually']),
   responsible: z.enum(['lab in charge', 'biomedical', 'company engineer', 'lab technician']),
   state: z.enum([
-    'Done', 'Final Date', 'E.Q.C Reception',
+    'Done', 'Final Date', 'E.Q.C  Reception',
     'done', 'need maintance', 'late maintance',
     'calibrated', 'need calibration', 'late calibration'
   ]).optional(),
@@ -131,7 +131,7 @@ export default function RecordForm({ mode, equipment_id, initialData, onSuccess 
       case 'calibration':
         return 'calibrated';
       case 'external_control':
-        return 'E.Q.C Reception';
+        return 'E.Q.C  Reception';
       default:
         return undefined;
     }
@@ -183,7 +183,7 @@ export default function RecordForm({ mode, equipment_id, initialData, onSuccess 
             frequency: values.frequency,
             responsible: values.responsible,
             equipment_id,
-            state: values.state as ExternalControlState || 'E.Q.C Reception',
+            state: values.state as ExternalControlState || 'E.Q.C  Reception',
             updated_by: 'manual' as UpdatedBy,
             last_updated: new Date().toISOString(),
           });
@@ -195,7 +195,7 @@ export default function RecordForm({ mode, equipment_id, initialData, onSuccess 
             frequency: values.frequency,
             responsible: values.responsible,
             equipment_id,
-            state: values.state as ExternalControlState || 'E.Q.C Reception',
+            state: values.state as ExternalControlState || 'E.Q.C  Reception',
             updated_by: 'manual' as UpdatedBy,
             last_updated: new Date().toISOString(),
           });
