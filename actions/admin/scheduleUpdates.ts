@@ -177,7 +177,6 @@ export async function updateMaintenanceSchedules() {
               .from('equipment_history')
               .insert({
                 schedule_id: schedule.schedule_id,
-                equipment_id: schedule.equipment_id,
                 performed_date: new Date().toISOString(),
                 completed_date: new Date().toISOString(),
                 state: state,
@@ -311,7 +310,6 @@ export async function updateCalibrationSchedules() {
               .from('equipment_history')
               .insert({
                 calibration_schedule_id: schedule.calibration_schedule_id,
-                equipment_id: schedule.equipment_id,
                 performed_date: new Date().toISOString(),
                 completed_date: new Date().toISOString(),
                 state: state,
@@ -454,7 +452,6 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
               .from('equipment_history')
               .insert({
                 external_control_id: control.control_id,
-                equipment_id: control.equipment_id,
                 performed_date: new Date().toISOString(),
                 completed_date: new Date().toISOString(),
                 state: state, // This is maintanace_state
