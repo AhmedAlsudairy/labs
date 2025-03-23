@@ -142,7 +142,12 @@ export async function updateMaintenanceSchedules() {
         let newNextDate = schedule.next_date;
         if (schedule.updated_by !== 'manual' || state === 'done') {
           if (state === 'done') {
-            newNextDate = calculateNextDate(new Date(), schedule.frequency);
+            // Use a normalized date to prevent timezone issues when calculating the next date
+            const baseDate = new Date();
+            baseDate.setHours(12, 0, 0, 0);
+            const nextDateObj = calculateNextDate(baseDate, schedule.frequency);
+            // Format as YYYY-MM-DD to ensure consistency when storing in the database
+            newNextDate = nextDateObj.toISOString().split('T')[0];
           }
 
           // Update maintenance schedule and create history separately instead of using RPC function
@@ -271,7 +276,12 @@ export async function updateCalibrationSchedules() {
         let newNextDate = schedule.next_date;
         if (schedule.updated_by !== 'manual' || state === 'calibrated') {
           if (state === 'calibrated') {
-            newNextDate = calculateNextDate(new Date(), schedule.frequency);
+            // Use a normalized date to prevent timezone issues when calculating the next date
+            const baseDate = new Date();
+            baseDate.setHours(12, 0, 0, 0);
+            const nextDateObj = calculateNextDate(baseDate, schedule.frequency);
+            // Format as YYYY-MM-DD to ensure consistency when storing in the database
+            newNextDate = nextDateObj.toISOString().split('T')[0];
           }
 
           // Update calibration schedule and create history separately instead of using RPC function
@@ -409,7 +419,12 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
         let newNextDate = control.next_date;
         if (control.updated_by !== 'manual' || state === 'Done') {
           if (state === 'Done') {
-            newNextDate = calculateNextDate(new Date(), control.frequency);
+            // Use a normalized date to prevent timezone issues when calculating the next date
+            const baseDate = new Date();
+            baseDate.setHours(12, 0, 0, 0);
+            const nextDateObj = calculateNextDate(baseDate, control.frequency);
+            // Format as YYYY-MM-DD to ensure consistency when storing in the database
+            newNextDate = nextDateObj.toISOString().split('T')[0];
           }
 
           // Update external control and create history separately instead of using RPC function
