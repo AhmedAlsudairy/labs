@@ -275,3 +275,8 @@ export type ExternalControlData = Omit<ExternalControlHistory, 'history_id'>;
 
 // Union type for all types of histories
 export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmentHistory | ExternalControlHistory;
+
+// History Input Types
+export type MaintenanceHistoryInput = Omit<MaintenanceEquipmentHistory, 'history_id'>;
+export type CalibrationHistoryInput = Omit<CalibrationEquipmentHistory, 'history_id'>;
+export type ExternalControlHistoryInput = Omit<ExternalControlHistory, 'history_id'>;

@@ -2,6 +2,7 @@
 
 // Inspired by react-hot-toast library
 import * as React from "react"
+import { useState, useCallback } from "react";
 
 import type {
   ToastActionElement,
@@ -171,24 +172,49 @@ function toast({ ...props }: Toast) {
   }
 }
 
-function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
+// Simple hook for toast notifications
 
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
+type ToastType = "success" | "error" | "info" | "warning";
 
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  }
+interface ToastState {
+  open: boolean;
+  title?: string;
+  description: string;
+  variant?: "default" | "destructive" | "success";
+  id: number; // Add the id property here
 }
 
-export { useToast, toast }
+const DEFAULT_TOAST_DURATION = 5000;
+
+// Export the toast function directly so it can be imported
+export { toast };
+
+export function useToast() {
+  const [toasts, setToasts] = useState<ToastState[]>([]);
+
+  const toast = useCallback(({
+    title,
+    description,
+    variant = "default"
+  }: {
+    title?: string;
+    description: string;
+    variant?: "default" | "destructive" | "success";
+  }) => {
+    const id = Date.now();
+    
+    setToasts((prevToasts) => [
+      ...prevToasts,
+      { open: true, title, description, variant, id }
+    ]);
+
+    // Auto-dismiss toast
+    setTimeout(() => {
+      setToasts((prevToasts) => 
+        prevToasts.filter(toast => toast.id !== id)
+      );
+    }, DEFAULT_TOAST_DURATION);
+  }, []);
+
+  return { toast, toasts };
+}

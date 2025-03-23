@@ -6,6 +6,7 @@ import * as z from "zod"
 import { ExternalControlState, Frequency, MaintenanceRole } from "@/lib/types"
 
 import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Form,
   FormControl,
@@ -234,13 +235,13 @@ export function ExternalControlForm({
           )}
         />
 
-        <Button 
+        <LoadingButton 
           type="submit" 
           className="w-full"
-          disabled={isSubmitting}
+          loading={isSubmitting}
         >
-          {isSubmitting ? "Saving..." : initialData ? "Update Record" : "Add Record"}
-        </Button>
+          {initialData ? "Update Record" : "Add Record"}
+        </LoadingButton>
       </form>
     </Form>
   )

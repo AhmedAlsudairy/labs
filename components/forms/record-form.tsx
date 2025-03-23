@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { DatePicker } from "@/components/ui/date-picker"
 import { addMaintenanceRecord, updateMaintenanceRecord } from "@/actions/admin/maintenance-record"
 import { addCalibrationRecord, updateCalibrationRecord } from "@/actions/admin/calibration"
@@ -95,9 +95,10 @@ type RecordFormProps = {
   onSuccess?: () => void;
 }
 
-export function RecordForm({ mode, equipment_id, initialData, onSuccess }: RecordFormProps) {
+export default function RecordForm({ mode, equipment_id, initialData, onSuccess }: RecordFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isEditMode = !!initialData
+  const { toast } = useToast();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

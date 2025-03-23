@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import {
   Form,
   FormControl,
@@ -23,8 +24,14 @@ import {
 } from "@/components/ui/select";
 import { calculateNextDate } from "@/utils/date-utils";
 import { Frequency, maintanace_state } from "@/types";
-import { addCalibrationHistory, addExternalControlHistory, addMaintenanceHistory } from "@/actions/admin/history";
 import { CalibrationState, MaintenanceState, ExternalControlState } from "@/lib/types";
+
+// Updated imports from history actions - removed toast import
+import { 
+  addMaintenanceHistory, 
+  addCalibrationHistory,
+  addExternalControlHistory 
+} from "@/actions/admin/history";
 
 interface MaintenanceHistoryFormProps {
   equipment_id: number;
@@ -86,7 +93,7 @@ type MaintenanceData = BaseHistory & {
   next_maintenance_date: Date;
   schedule_id: number;
   state: MaintenanceState;
-  frequency: Frequency; // Add this required property
+  frequency: Frequency; // Keep frequency for calculations
   calibration_schedule_id?: never;
   external_control_id?: never;
 };
@@ -97,7 +104,7 @@ type CalibrationData = BaseHistory & {
   next_calibration_date: Date;
   calibration_schedule_id: number;
   state: CalibrationState;
-  frequency: Frequency; // Add this required property
+  frequency: Frequency; // Keep frequency for calculations
   schedule_id?: never;
   work_performed?: never;
   parts_used?: never;
@@ -113,7 +120,7 @@ type ExternalControlData = BaseHistory & {
   external_control_id: number;
   external_control_state: maintanace_state;
   state: maintanace_state;
-  frequency: Frequency; // Add this required property
+  frequency: Frequency; // Keep frequency for calculations
   schedule_id?: never;
   calibration_schedule_id?: never;
   next_maintenance_date?: never;
@@ -130,6 +137,7 @@ export function MaintenanceHistoryForm({
   onSuccess 
 }: MaintenanceHistoryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const formSchema = mode === 'maintenance' 
     ? maintenanceSchema 
@@ -163,11 +171,15 @@ export function MaintenanceHistoryForm({
     },
   });
 
+  // When the performed_date or completed_date changes, update the next date
   useEffect(() => {
     const performed_date = form.getValues('performed_date');
-    if (performed_date) {
-      // Generate the next date based on current date and frequency
-      const nextDate = calculateNextDate(frequency);
+    const completed_date = form.getValues('completed_date');
+    
+    // Only calculate if both dates are set
+    if (performed_date && completed_date) {
+      // Use completed_date as the base for next date calculation
+      const nextDate = calculateNextDate(frequency, completed_date);
       
       const dateFieldName = mode === 'maintenance' 
         ? 'next_maintenance_date' 
@@ -177,72 +189,151 @@ export function MaintenanceHistoryForm({
       
       form.setValue(dateFieldName, nextDate);
     }
-  }, [form.watch('performed_date'), frequency, mode, form]);
+  }, [form.watch('performed_date'), form.watch('completed_date'), frequency, mode, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setError(null);
     try {
       setIsSubmitting(true);
+      console.log(`Submitting ${mode} history form with values:`, values);
       
-      // Always calculate next date from today if state is 'done'/'calibrated'
+      // Reduce timeout to 10 seconds, since our optimizations should make it complete faster
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Submission timed out after 10 seconds')), 10000)
+      );
+      
+      // Calculate next date based on the completed date
       let nextDate;
-      if ((mode === 'maintenance' && values.state === 'done') || 
-          (mode === 'calibration' && values.state === 'calibrated') ||
-          (mode === 'external_control' && values.state === 'Done')) {
-        nextDate = calculateNextDate(frequency);
+      if (values.completed_date) {
+        if ((mode === 'maintenance' && values.state === 'done') || 
+            (mode === 'calibration' && values.state === 'calibrated') ||
+            (mode === 'external_control' && values.state === 'Done')) {
+          nextDate = calculateNextDate(frequency, values.completed_date);
+          console.log(`Calculated next date: ${nextDate} based on completed date: ${values.completed_date}`);
+        } else {
+          // For other states, still use completed date for consistency
+          nextDate = calculateNextDate(frequency, values.completed_date);
+        }
       } else {
-        // For other states, calculate based on performed date
-        nextDate = calculateNextDate(frequency, values.performed_date);
+        // Fallback to current date if somehow completed_date is missing
+        nextDate = calculateNextDate(frequency);
+        console.log("No completed date provided, using current date to calculate next date");
       }
       
-      if (mode === 'maintenance') {
-        const maintenanceData: MaintenanceData = {
-          performed_date: values.performed_date,
-          completed_date: values.completed_date,
-          description: values.description,
-          technician_notes: values.technician_notes,
-          schedule_id: scheduleId,
-          next_maintenance_date: nextDate,
-          work_performed: (values as any).work_performed || '',
-          parts_used: (values as any).parts_used || '',
-          state: values.state as MaintenanceState,
-          frequency: frequency,
-        };
-        await addMaintenanceHistory(maintenanceData, lab_id, equipment_id);
-      } else if (mode === 'calibration') {
-        const calibrationData: CalibrationData = {
-          performed_date: values.performed_date,
-          completed_date: values.completed_date,
-          description: values.description,
-          technician_notes: values.technician_notes,
-          calibration_schedule_id: scheduleId,
-          next_calibration_date: nextDate,
-          calibration_results: (values as any).calibration_results || '',
-          state: values.state as CalibrationState,
-          frequency: frequency,
-        };
-        await addCalibrationHistory(calibrationData, lab_id, equipment_id);
-      } else {
-        const externalControlData: ExternalControlData = {
-          performed_date: values.performed_date,
-          completed_date: values.completed_date,
-          description: values.description,
-          technician_notes: values.technician_notes,
-          external_control_id: scheduleId,
-          next_date: nextDate,
-          work_performed: (values as any).work_performed || '',
-          parts_used: (values as any).parts_used || '',
-          state: values.state as maintanace_state,
-          external_control_state: values.state as maintanace_state,
-          frequency: frequency,
-        };
-        await addExternalControlHistory(externalControlData, lab_id, equipment_id);
+      let result;
+      
+      try {
+        console.log(`Submitting ${mode} data to server...`);
+        const submitStartTime = Date.now();
+        
+        if (mode === 'maintenance') {
+          const maintenanceData: MaintenanceData = {
+            performed_date: values.performed_date,
+            completed_date: values.completed_date,
+            description: values.description,
+            technician_notes: values.technician_notes,
+            schedule_id: scheduleId,
+            next_maintenance_date: nextDate,
+            work_performed: (values as any).work_performed || '',
+            parts_used: (values as any).parts_used || '',
+            state: values.state as MaintenanceState,
+            frequency: frequency,
+          };
+          
+          console.log("Sending maintenance data:", maintenanceData);
+          result = await Promise.race([
+            addMaintenanceHistory(maintenanceData, lab_id, equipment_id),
+            timeoutPromise
+          ]);
+        } else if (mode === 'calibration') {
+          const calibrationData: CalibrationData = {
+            performed_date: values.performed_date,
+            completed_date: values.completed_date,
+            description: values.description,
+            technician_notes: values.technician_notes,
+            calibration_schedule_id: scheduleId,
+            next_calibration_date: nextDate,
+            calibration_results: (values as any).calibration_results || '',
+            state: values.state as CalibrationState,
+            frequency: frequency, // Keep frequency for calculations
+          };
+          
+          console.log("Sending calibration data:", calibrationData);
+          result = await Promise.race([
+            addCalibrationHistory(calibrationData, lab_id, equipment_id),
+            timeoutPromise
+          ]);
+        } else {
+          const externalControlData: ExternalControlData = {
+            performed_date: values.performed_date,
+            completed_date: values.completed_date,
+            description: values.description,
+            technician_notes: values.technician_notes,
+            external_control_id: scheduleId,
+            next_date: nextDate,
+            work_performed: (values as any).work_performed || '',
+            parts_used: (values as any).parts_used || '',
+            state: values.state as maintanace_state,
+            external_control_state: values.state as maintanace_state,
+            frequency: frequency, // Keep frequency for calculations
+          };
+          
+          console.log("Sending external control data:", externalControlData);
+          result = await Promise.race([
+            addExternalControlHistory(externalControlData, lab_id, equipment_id),
+            timeoutPromise
+          ]);
+        }
+        
+        console.log(`Server responded in ${Date.now() - submitStartTime}ms`);
+      } catch (submitError) {
+        console.error("Error during server action:", submitError);
+        throw submitError;
       }
-
-      form.reset();
-      onSuccess();
+      
+      // Fix error handling with proper type check before using 'in' operator
+      if (result && typeof result === 'object' && 'error' in result) {
+        console.error("Error submitting form:", result.error);
+        const errorMessage = result.error instanceof Error 
+          ? result.error.message 
+          : "Failed to submit form";
+          
+        setError(errorMessage);
+        return;
+      }
+      
+      // Success handling - no toast notification
+      console.log(`${mode.charAt(0).toUpperCase() + mode.slice(1)} history added successfully`);
+      
+      // Reset the form right away to give immediate user feedback
+      form.reset({
+        description: "",
+        technician_notes: "",
+        state: mode === 'maintenance' 
+          ? "done" 
+          : mode === 'calibration'
+          ? "calibrated"
+          : "E.Q.C Reception",
+        ...(mode === 'maintenance' ? {
+          work_performed: "",
+          parts_used: "",
+        } : mode === 'calibration' ? {
+          calibration_results: "",
+        } : {
+          work_performed: "",
+          parts_used: "",
+        }),
+      });
+      
+      // Explicitly call the success callback
+      if (typeof onSuccess === 'function') {
+        onSuccess();
+      }
     } catch (error) {
       console.error("Error submitting form:", error);
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
     } finally {
+      // Ensure we always reset the isSubmitting state
       setIsSubmitting(false);
     }
   };
@@ -250,6 +341,13 @@ export function MaintenanceHistoryForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+        
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -415,9 +513,9 @@ export function MaintenanceHistoryForm({
         />
 
         <div className="flex justify-end space-x-2">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </Button>
+          <LoadingButton type="submit" loading={isSubmitting}>
+            Submit
+          </LoadingButton>
         </div>
       </form>
     </Form>

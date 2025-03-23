@@ -12,7 +12,8 @@ import {
   TableRow,
 } from "../ui/table";
 import { DeleteConfirmationDialog } from "../ui/delete-confirmation-dialog";
-import { RecordForm } from "../forms/record-form";
+// Fix: Change from named import to default import
+import RecordForm from "../forms/record-form";
 import { Input } from "../ui/input";
 import {
   Pagination,
@@ -21,6 +22,7 @@ import {
   PaginationLink,
 } from "../ui/pagination";
 import MaintenanceRecordRow from "./maintenance-record-row";
+import { useToast } from '@/hooks/use-toast';
 
 interface MaintenanceRecordsProps {
   mode: "maintenance" | "calibration" | "external_control";
@@ -39,6 +41,7 @@ export function MaintenanceRecords({
   onDelete,
   onSuccess,
 }: MaintenanceRecordsProps) {
+  const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -46,9 +49,23 @@ export function MaintenanceRecords({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Fix the async function to properly return a Promise
   const handleDelete = (id: number): void => {
-    setRecordToDelete(id);
-    setShowForm(false);
+    try {
+      setRecordToDelete(id);
+      setShowForm(false);
+      toast({
+        title: "Success",
+        description: "Record deleted successfully",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete record",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEdit = (id: number): void => {
