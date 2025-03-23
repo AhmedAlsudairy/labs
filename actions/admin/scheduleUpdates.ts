@@ -104,6 +104,10 @@ async function wasRecentlyUpdatedManually(scheduleId: number, type: 'maintenance
 export async function updateMaintenanceSchedules() {
   try {
     console.log('Starting updateMaintenanceSchedules at', new Date().toISOString());
+    // Initialize notification tracking counters
+    let notificationsSent = 0;
+    let notificationsFailed = 0;
+    
     const { data: maintenanceSchedules, error: maintenanceError } = await supabase
       .from('maintenance_schedule')
       .select(`
@@ -208,7 +212,14 @@ export async function updateMaintenanceSchedules() {
 
           // Send notifications only if state changed and isn't 'done'
           if (state !== 'done' && state !== previousState && schedule.equipment?.laboratory?.manager_id) {
-            await sendMaintenanceNotification(schedule, state, newNextDate);
+            const emailResult = await sendMaintenanceNotification(schedule, state, newNextDate);
+            if (emailResult?.success) {
+              notificationsSent++;
+              console.log(`[Email Debug] Successfully sent maintenance notification for schedule ${schedule.schedule_id}`);
+            } else {
+              notificationsFailed++;
+              console.log(`[Email Debug] Failed to send maintenance notification for schedule ${schedule.schedule_id}`);
+            }
           }
         }
       } catch (scheduleError) {
@@ -220,11 +231,13 @@ export async function updateMaintenanceSchedules() {
       }
     }
 
-    console.log(`Completed updateMaintenanceSchedules at ${new Date().toISOString()}, updated: ${updatedSchedules.length}, failed: ${failedSchedules.length}`);
+    console.log(`Completed updateMaintenanceSchedules at ${new Date().toISOString()}, updated: ${updatedSchedules.length}, failed: ${failedSchedules.length}, emails sent: ${notificationsSent}, emails failed: ${notificationsFailed}`);
     return { 
       success: true, 
       updatedCount: updatedSchedules.length,
       failedCount: failedSchedules.length,
+      notificationsSent,
+      notificationsFailed,
       updatedSchedules,
       failedSchedules
     };
@@ -237,6 +250,10 @@ export async function updateMaintenanceSchedules() {
 export async function updateCalibrationSchedules() {
   try {
     console.log('Starting updateCalibrationSchedules at', new Date().toISOString());
+    // Initialize notification tracking counters
+    let notificationsSent = 0;
+    let notificationsFailed = 0;
+    
     const { data: calibrationSchedules, error: calibrationError } = await supabase
       .from('calibration_schedule')
       .select(`
@@ -341,7 +358,14 @@ export async function updateCalibrationSchedules() {
 
           // Send notifications only if state changed and isn't 'calibrated'
           if (state !== 'calibrated' && state !== previousState && schedule.equipment?.laboratory?.manager_id) {
-            await sendCalibrationNotification(schedule, state, newNextDate);
+            const emailResult = await sendCalibrationNotification(schedule, state, newNextDate);
+            if (emailResult?.success) {
+              notificationsSent++;
+              console.log(`[Email Debug] Successfully sent calibration notification for schedule ${schedule.calibration_schedule_id}`);
+            } else {
+              notificationsFailed++;
+              console.log(`[Email Debug] Failed to send calibration notification for schedule ${schedule.calibration_schedule_id}`);
+            }
           }
         }
       } catch (scheduleError) {
@@ -353,11 +377,13 @@ export async function updateCalibrationSchedules() {
       }
     }
 
-    console.log(`Completed updateCalibrationSchedules at ${new Date().toISOString()}, updated: ${updatedSchedules.length}, failed: ${failedSchedules.length}`);
+    console.log(`Completed updateCalibrationSchedules at ${new Date().toISOString()}, updated: ${updatedSchedules.length}, failed: ${failedSchedules.length}, emails sent: ${notificationsSent}, emails failed: ${notificationsFailed}`);
     return { 
       success: true, 
       updatedCount: updatedSchedules.length,
       failedCount: failedSchedules.length,
+      notificationsSent,
+      notificationsFailed,
       updatedSchedules,
       failedSchedules
     };
@@ -370,6 +396,10 @@ export async function updateCalibrationSchedules() {
 export async function updateExternalControlSchedules(equipment_id?: number) {
   try {
     console.log('Starting updateExternalControlSchedules at', new Date().toISOString());
+    // Initialize notification tracking counters
+    let notificationsSent = 0;
+    let notificationsFailed = 0;
+    
     const query = supabase
       .from('external_control')
       .select(`

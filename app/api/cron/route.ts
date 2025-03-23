@@ -65,6 +65,24 @@ export async function GET() {
       }
     }
     
+    // Gather email notification details if available
+    const emailDetails = {
+      maintenance: results.maintenance?.notificationsSent || 0,
+      calibration: results.calibration?.notificationsSent || 0,
+      externalControl: results.externalControl?.notificationsSent || 0,
+      failed: results.maintenance?.notificationsFailed || 0 + 
+              results.calibration?.notificationsFailed || 0 + 
+              results.externalControl?.notificationsFailed || 0
+    };
+
+    // Add email debugging information to response
+    const emailDebugInfo = {
+      smtp: process.env.SMTP_PASSWORD ? 'Configured' : 'Not configured',
+      emailServer: 'lablaboman.live',
+      fromAddress: 'noreplay@lablaboman.live',
+      testRecipient: 'micronboy632@gmail.com'
+    };
+    
     return NextResponse.json({ 
       success: results.overallSuccess, 
       message: results.overallSuccess ? 'Schedules updated successfully' : 'Some schedule updates failed',
@@ -77,17 +95,25 @@ export async function GET() {
       statistics: {
         maintenance: {
           updated: results.maintenance?.updatedCount || 0,
-          failed: results.maintenance?.failedCount || 0
+          failed: results.maintenance?.failedCount || 0,
+          notificationsSent: results.maintenance?.notificationsSent || 0,
+          notificationsFailed: results.maintenance?.notificationsFailed || 0
         },
         calibration: {
           updated: results.calibration?.updatedCount || 0,
-          failed: results.calibration?.failedCount || 0
+          failed: results.calibration?.failedCount || 0,
+          notificationsSent: results.calibration?.notificationsSent || 0,
+          notificationsFailed: results.calibration?.notificationsFailed || 0
         },
         externalControl: {
           updated: results.externalControl?.updatedCount || 0,
-          failed: results.externalControl?.failedCount || 0
+          failed: results.externalControl?.failedCount || 0,
+          notificationsSent: results.externalControl?.notificationsSent || 0,
+          notificationsFailed: results.externalControl?.notificationsFailed || 0
         }
       },
+      emailSummary: emailDetails,
+      emailDebug: emailDebugInfo,
       errors: results.errors.length > 0 ? results.errors : undefined
     });
   } catch (error) {
