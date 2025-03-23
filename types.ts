@@ -185,7 +185,7 @@ export enum CalibrationStateEnum {
 export enum ExternalControlStateEnum {
   DONE = 'Done',
   FINAL_DATE = 'Final Date',
-  EQC_RECEPTION = 'E.Q.C Reception'
+  EQC_RECEPTION = 'E.Q.C  Reception'
 }
 
 export enum MaintenanceRoleEnum {
@@ -197,7 +197,7 @@ export enum MaintenanceRoleEnum {
 
 // Keep the old types for backward compatibility
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
-export type maintanace_state = 'done' | 'need maintance' | 'late maintance' | 'calibrated' | 'need calibration' | 'late calibration' | 'Final Date' | 'E.Q.C Reception';
+export type maintanace_state = 'done' | 'need maintance' | 'late maintance' | 'calibrated' | 'need calibration' | 'late calibration' | 'Final Date' | 'E.Q.C  Reception';
 export type maintanace_role = 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';
 
 export type user_category= "food" | "animal" | "human"
