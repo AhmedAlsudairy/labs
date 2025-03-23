@@ -181,7 +181,8 @@ interface ToastState {
   title?: string;
   description: string;
   variant?: "default" | "destructive" | "success";
-  id: number; // Add the id property here
+  id: number;
+  action?: React.ReactNode;
 }
 
 const DEFAULT_TOAST_DURATION = 5000;
@@ -195,17 +196,19 @@ export function useToast() {
   const toast = useCallback(({
     title,
     description,
-    variant = "default"
+    variant = "default",
+    action
   }: {
     title?: string;
     description: string;
     variant?: "default" | "destructive" | "success";
+    action?: React.ReactNode;
   }) => {
     const id = Date.now();
     
     setToasts((prevToasts) => [
       ...prevToasts,
-      { open: true, title, description, variant, id }
+      { open: true, title, description, variant, id, action }
     ]);
 
     // Auto-dismiss toast
