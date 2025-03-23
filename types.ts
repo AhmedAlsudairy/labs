@@ -280,3 +280,11 @@ export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmen
 export type MaintenanceHistoryInput = Omit<MaintenanceEquipmentHistory, 'history_id'>;
 export type CalibrationHistoryInput = Omit<CalibrationEquipmentHistory, 'history_id'>;
 export type ExternalControlHistoryInput = Omit<ExternalControlHistory, 'history_id'>;
+
+export interface ToastState {
+  id: string;
+  title: string;
+  description?: string;
+  variant?: 'default' | 'destructive';
+  action?: React.ReactNode;
+}
