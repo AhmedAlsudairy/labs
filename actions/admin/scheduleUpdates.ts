@@ -2,7 +2,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { addDays, addWeeks, addMonths, addYears } from 'date-fns';
-import { sendEmail } from '@/utils/resend/email';
 import { Frequency } from "@/types";
 import { ExternalControlState } from '@/lib/types';
 
@@ -22,6 +21,7 @@ interface ScheduleUpdate {
 
 // Replace local function with imported one
 import { calculateNextDate as calcNextDate } from "@/utils/date-utils";
+import { sendEmail } from '@/utils/resend/email';
 
 function calculateNextDate(currentDate: Date, frequency: Frequency): Date {
   return calcNextDate(frequency, currentDate);
@@ -511,95 +511,143 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
 
 // Helper function for maintenance notifications
 async function sendMaintenanceNotification(schedule: any, state: MaintenanceState, newNextDate: Date) {
-  const { data: userData } = await supabase.auth
-    .admin.getUserById(schedule.equipment.laboratory.manager_id);
+  console.log(`[Email Debug] Starting maintenance notification for equipment ID ${schedule.equipment_id}, state: ${state}`);
+  
+  try {
+    const { data: userData } = await supabase.auth
+      .admin.getUserById(schedule.equipment.laboratory.manager_id);
+    console.log(`[Email Debug] Manager data:`, userData?.user?.email || 'No manager email found');
 
-  const { data: cordinator } = await supabase
-    .rpc('get_lab_matched_users', {
-      p_lab_id: schedule.equipment.laboratory.lab_id
+    const { data: cordinator } = await supabase
+      .rpc('get_lab_matched_users', {
+        p_lab_id: schedule.equipment.laboratory.lab_id
+      });
+    console.log(`[Email Debug] Coordinator data:`, cordinator?.[0]?.email || 'No coordinator email found');
+
+    const cordinator_email = cordinator?.[0]?.email;
+    const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
+    
+    const emailContent = {
+      to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+      title: `Equipment Maintenance Schedule Alert: ${state}`,
+      body: `
+        Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+        Current Status: ${state}<br/>
+        Next maintenance date: ${newNextDate}<br/>
+        Description: ${schedule.description || 'Regular maintenance required'}<br/>
+        <br/>
+        View equipment details: <a href="${equipmentUrl}">Click here</a>
+      `
+    };
+    
+    console.log(`[Email Debug] Maintenance email content:`, {
+      recipients: emailContent.to.join(', '),
+      subject: emailContent.title
     });
 
-  const cordinator_email = cordinator?.[0]?.email;
-  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
-  
-  const emailContent = {
-    to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-    title: `Equipment Maintenance Schedule Alert: ${state}`,
-    body: `
-      Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
-      Current Status: ${state}<br/>
-      Next maintenance date: ${newNextDate}<br/>
-      Description: ${schedule.description || 'Regular maintenance required'}<br/>
-      <br/>
-      View equipment details: <a href="${equipmentUrl}">Click here</a>
-    `
-  };
-
-  await sendEmail(emailContent);
+    const result = await sendEmail(emailContent);
+    console.log(`[Email Debug] Maintenance email result:`, result);
+    return result;
+  } catch (error) {
+    console.error(`[Email Debug] Error sending maintenance notification:`, error);
+    return { success: false, message: 'Failed to send maintenance email' };
+  }
 }
 
 // Helper function for calibration notifications
 async function sendCalibrationNotification(schedule: any, state: CalibrationState, newNextDate: Date) {
-  const { data: userData } = await supabase.auth
-    .admin.getUserById(schedule.equipment.laboratory.manager_id);
+  console.log(`[Email Debug] Starting calibration notification for equipment ID ${schedule.equipment_id}, state: ${state}`);
+  
+  try {
+    const { data: userData } = await supabase.auth
+      .admin.getUserById(schedule.equipment.laboratory.manager_id);
+    console.log(`[Email Debug] Manager data:`, userData?.user?.email || 'No manager email found');
 
-  const { data: cordinator } = await supabase
-    .rpc('get_lab_matched_users', {
-      p_lab_id: schedule.equipment.laboratory.lab_id
+    const { data: cordinator } = await supabase
+      .rpc('get_lab_matched_users', {
+        p_lab_id: schedule.equipment.laboratory.lab_id
+      });
+    console.log(`[Email Debug] Coordinator data:`, cordinator?.[0]?.email || 'No coordinator email found');
+
+    const cordinator_email = cordinator?.[0]?.email;
+    const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
+    
+    const emailContent = {
+      to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+      title: `Equipment Calibration Schedule Alert: ${state}`,
+      body: `
+        Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
+        Current Status: ${state}<br/>
+        Next calibration date: ${newNextDate}<br/>
+        Description: ${schedule.description || 'Regular calibration required'}<br/>
+        <br/>
+        View equipment details: <a href="${equipmentUrl}">Click here</a>
+      `
+    };
+    
+    console.log(`[Email Debug] Calibration email content:`, {
+      recipients: emailContent.to.join(', '),
+      subject: emailContent.title
     });
 
-  const cordinator_email = cordinator?.[0]?.email;
-  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
-  
-  const emailContent = {
-    to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-    title: `Equipment Calibration Schedule Alert: ${state}`,
-    body: `
-      Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
-      Current Status: ${state}<br/>
-      Next calibration date: ${newNextDate}<br/>
-      Description: ${schedule.description || 'Regular calibration required'}<br/>
-      <br/>
-      View equipment details: <a href="${equipmentUrl}">Click here</a>
-    `
-  };
-
-  await sendEmail(emailContent);
+    const result = await sendEmail(emailContent);
+    console.log(`[Email Debug] Calibration email result:`, result);
+    return result;
+  } catch (error) {
+    console.error(`[Email Debug] Error sending calibration notification:`, error);
+    return { success: false, message: 'Failed to send calibration email' };
+  }
 }
 
 // Helper function for external control notifications
 async function sendExternalControlNotification(control: any, state: ExternalControlState, newNextDate: Date) {
-  const { data: userData } = await supabase.auth
-    .admin.getUserById(control.equipment.laboratory.manager_id);
+  console.log(`[Email Debug] Starting external control notification for control ID ${control.control_id}, state: ${state}`);
+  
+  try {
+    const { data: userData } = await supabase.auth
+      .admin.getUserById(control.equipment.laboratory.manager_id);
+    console.log(`[Email Debug] Manager data:`, userData?.user?.email || 'No manager email found');
 
-  const { data: cordinator } = await supabase
-    .rpc('get_lab_matched_users', {
-      p_lab_id: control.equipment.laboratory.lab_id
+    const { data: cordinator } = await supabase
+      .rpc('get_lab_matched_users', {
+        p_lab_id: control.equipment.laboratory.lab_id
+      });
+    console.log(`[Email Debug] Coordinator data:`, cordinator?.[0]?.email || 'No coordinator email found');
+
+    const cordinator_email = cordinator?.[0]?.email;
+    const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${control.equipment.laboratory.lab_id}/${control.equipment_id}`;
+    
+    const stateColors = {
+      'Done': 'green',
+      'Final Date': 'yellow',
+      'E.Q.C  Reception': 'red'
+    };
+
+    const emailContent = {
+      to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+      title: `External Control Schedule Alert: ${state}`,
+      body: `
+        Equipment: ${control.equipment.device?.name || 'Unknown Equipment'}<br/>
+        Current Status: <span style="color: ${stateColors[state]}">${state}</span><br/>
+        Next control date: ${newNextDate}<br/>
+        Description: ${control.description || 'External control required'}<br/>
+        <br/>
+        View equipment details: <a href="${equipmentUrl}">Click here</a>
+      `
+    };
+    
+    console.log(`[Email Debug] External control email content:`, {
+      recipients: emailContent.to.join(', '),
+      subject: emailContent.title
     });
 
-  const cordinator_email = cordinator?.[0]?.email;
-  const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${control.equipment.laboratory.lab_id}/${control.equipment_id}`;
-  
-  const stateColors = {
-    'Done': 'green',
-    'Final Date': 'yellow',
-    'E.Q.C  Reception': 'red'
-  };
-
-  const emailContent = {
-    to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-    title: `External Control Schedule Alert: ${state}`,
-    body: `
-      Equipment: ${control.equipment.device?.name || 'Unknown Equipment'}<br/>
-      Current Status: <span style="color: ${stateColors[state]}">${state}</span><br/>
-      Next control date: ${newNextDate}<br/>
-      Description: ${control.description || 'External control required'}<br/>
-      <br/>
-      View equipment details: <a href="${equipmentUrl}">Click here</a>
-    `
-  };
-
-  await sendEmail(emailContent);
+    const result = await sendEmail(emailContent);
+    console.log(`[Email Debug] External control email result:`, result);
+    return result;
+  } catch (error) {
+    console.error(`[Email Debug] Error sending external control notification:`, error);
+    return { success: false, message: 'Failed to send external control email' };
+  }
 }
 
 export async function updateAllSchedules() {

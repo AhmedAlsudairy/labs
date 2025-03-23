@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { updateAllSchedules } from '@/actions/admin/scheduleUpdates';
 
+// Helper function to get a date normalized to noon (12:00:00)
+// This helps debug date calculation issues related to timezone handling
+function getNormalizedNoonDate(): Date {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
+
 // Cron job runs every 6 hours (at 00:00, 06:00, 12:00, and 18:00)
 // Cron schedule: 0 */6 * * *
 
@@ -10,20 +18,51 @@ import { updateAllSchedules } from '@/actions/admin/scheduleUpdates';
  * It updates the states based on date calculations and handles notifications
  */
 export async function GET() {
-  console.log(`Cron job started at ${new Date().toISOString()}`);
+  console.log(`===== CRON JOB DEBUG =====${new Date().toISOString()}=====`);
+  console.log(`[Cron Debug] Environment: ${process.env.NODE_ENV || 'not set'}`);
+  console.log(`[Cron Debug] Website URL: ${process.env.NEXT_PUBLIC_WEBSITE_URL || 'not set'}`);
+  console.log(`[Cron Debug] Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+  console.log(`[Cron Debug] Current time: ${new Date().toString()}`);
+  console.log(`[Cron Debug] Current date ISO: ${new Date().toISOString()}`);
+  console.log(`[Cron Debug] Current date local: ${new Date().toLocaleString()}`);
+  console.log(`[Cron Debug] Normalized noon date: ${getNormalizedNoonDate().toISOString()}`);
+  console.log(`===== END ENVIRONMENT INFO =====`);
   
   try {
+    console.log(`[Cron Debug] Starting updateAllSchedules() call`);
     // Execute all schedule updates and get detailed results
     const results = await updateAllSchedules();
+    console.log(`[Cron Debug] updateAllSchedules() completed with status: ${results.overallSuccess ? 'SUCCESS' : 'FAILURE'}`);
     
     // Log success or failure details
     if (results.overallSuccess) {
-      console.log('Cron job completed successfully');
-      console.log(`Maintenance updates: ${results.maintenance?.updatedCount || 0} schedules updated`);
-      console.log(`Calibration updates: ${results.calibration?.updatedCount || 0} schedules updated`);
-      console.log(`External control updates: ${results.externalControl?.updatedCount || 0} controls updated`);
+      console.log(`[Cron Debug] Cron job completed successfully`);
+      console.log(`[Cron Debug] Maintenance updates: ${results.maintenance?.updatedCount || 0} schedules updated`);
+      console.log(`[Cron Debug] Calibration updates: ${results.calibration?.updatedCount || 0} schedules updated`);
+      console.log(`[Cron Debug] External control updates: ${results.externalControl?.updatedCount || 0} controls updated`);
+      
+      // Log any warnings or potential issues
+      if (results.maintenance?.failedCount > 0) {
+        console.warn(`[Cron Debug] Warning: ${results.maintenance.failedCount} maintenance schedules failed to update`);
+      }
+      if (results.calibration?.failedCount > 0) {
+        console.warn(`[Cron Debug] Warning: ${results.calibration.failedCount} calibration schedules failed to update`);
+      }
+      if (results.externalControl?.failedCount > 0) {
+        console.warn(`[Cron Debug] Warning: ${results.externalControl.failedCount} external controls failed to update`);
+      }
     } else {
-      console.error('Cron job completed with errors:', results.errors);
+      console.error(`[Cron Debug] Cron job completed with errors:`, results.errors);
+      // Log specific errors by category
+      if (results.maintenance?.error) {
+        console.error(`[Cron Debug] Maintenance error:`, results.maintenance.error);
+      }
+      if (results.calibration?.error) {
+        console.error(`[Cron Debug] Calibration error:`, results.calibration.error);
+      }
+      if (results.externalControl?.error) {
+        console.error(`[Cron Debug] External control error:`, results.externalControl.error);
+      }
     }
     
     return NextResponse.json({ 
