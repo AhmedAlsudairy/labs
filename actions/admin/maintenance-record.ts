@@ -21,9 +21,12 @@ export async function updateMaintenanceRecord(
     if (recordData.date && recordData.frequency) {
       // Convert string date to Date object for calculation
       const dateObj = new Date(recordData.date);
+      // Set time to noon to prevent timezone issues
+      dateObj.setHours(12, 0, 0, 0);
       const calculatedDate = calculateNextDate(recordData.frequency, dateObj);
-      // Convert back to string for DB
-      nextDate = calculatedDate.toISOString().split('T')[0];
+      // Store the date with time component to preserve timezone handling
+      // This ensures consistent date representation across the application
+      nextDate = calculatedDate.toISOString();
     }
   
     const { data, error } = await supabase
@@ -69,9 +72,12 @@ export async function updateMaintenanceRecord(
   ): Promise<MaintenanceRecord> {
     // Convert string date to Date object for calculation
     const dateObj = recordData.date ? new Date(recordData.date) : new Date();
+    // Set time to noon to prevent timezone issues
+    dateObj.setHours(12, 0, 0, 0);
     const nextDate = calculateNextDate(recordData.frequency, dateObj);
-    // Convert result back to string for DB
-    const nextDateString = nextDate.toISOString().split('T')[0];
+    // Store the date with time component to preserve timezone handling
+    // This ensures consistent date representation across the application
+    const nextDateString = nextDate.toISOString();
     
     const { data, error } = await supabase
       .from('maintenance_schedule')

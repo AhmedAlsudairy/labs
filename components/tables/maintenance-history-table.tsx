@@ -40,7 +40,16 @@ export function MaintenanceHistoryTable({equipment_id, lab_id, mode, scheduleId,
   }, [mode, scheduleId]);
 
   const isCalibrationHistory = (history: EquipmentHistory): history is CalibrationEquipmentHistory => {
-    return 'calibration_results' in history;
+    return history.calibration_schedule_id !== null && history.calibration_schedule_id !== undefined;
+  };
+
+  // Ensure history has necessary fields for display
+  const getHistoryDisplayContent = (history: EquipmentHistory): string => {
+    if (isCalibrationHistory(history)) {
+      return history.calibration_results || 'No results recorded';
+    } else {
+      return history.work_performed || 'No work recorded';
+    }
   };
 
   return (
@@ -139,16 +148,12 @@ export function MaintenanceHistoryTable({equipment_id, lab_id, mode, scheduleId,
                     className="cursor-pointer group"
                     onClick={() => setSelectedDescription({
                       title: mode === 'calibration' ? 'Calibration Results' : 'Work Performed',
-                      description: isCalibrationHistory(history) 
-                        ? history.calibration_results 
-                        : history.work_performed
+                      description: getHistoryDisplayContent(history)
                     })}
                   >
                     <div className="flex items-center gap-2">
                       <span className="truncate max-w-[200px] text-sm text-gray-600 dark:text-gray-300">
-                        {isCalibrationHistory(history) 
-                          ? history.calibration_results 
-                          : history.work_performed}
+                        {getHistoryDisplayContent(history)}
                       </span>
                       <Search className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400" />
                     </div>
