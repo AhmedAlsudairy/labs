@@ -63,7 +63,13 @@ export default function MaintenanceRecordRow({
     <>
       <TableRow className="dark:border-gray-700 group">
         <TableCell className="dark:text-gray-300">
-          {record.date && format(new Date(record.date), 'dd/MM/yyyy')}
+          {record.date && (() => {
+            // Normalize date to noon to prevent timezone issues
+            const dateObj = new Date(record.date);
+            // Set to noon to avoid timezone shifts
+            dateObj.setHours(12, 0, 0, 0);
+            return format(dateObj, 'dd/MM/yyyy');
+          })()}
         </TableCell>
         <TableCell className="dark:text-gray-300">
           {record.frequency}

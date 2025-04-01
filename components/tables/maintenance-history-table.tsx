@@ -120,11 +120,17 @@ export function MaintenanceHistoryTable({equipment_id, lab_id, mode, scheduleId,
                 >
                   <TableCell className="text-sm text-gray-600 dark:text-gray-300">
                     {history.performed_date
-                      ? new Intl.DateTimeFormat("en-GB", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric"
-                      }).format(new Date(history.performed_date))
+                      ? (() => {
+                          // Normalize date to noon to prevent timezone issues
+                          const dateObj = new Date(history.performed_date);
+                          // Set to noon to avoid timezone shifts
+                          dateObj.setHours(12, 0, 0, 0);
+                          return new Intl.DateTimeFormat("en-GB", {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric"
+                          }).format(dateObj);
+                        })()
                       : "N/A"}
                   </TableCell>
                   <TableCell>

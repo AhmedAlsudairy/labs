@@ -93,20 +93,34 @@ export async function addMaintenanceHistory(
         // Extract frequency from data before inserting
         const { frequency, ...historyData } = data;
         
+        // Ensure dates are properly formatted for database storage
+        // Convert date objects to ISO strings to maintain timezone consistency
+        const performed_date = historyData.performed_date instanceof Date 
+            ? historyData.performed_date.toISOString() 
+            : historyData.performed_date;
+            
+        const completed_date = historyData.completed_date instanceof Date 
+            ? historyData.completed_date.toISOString() 
+            : historyData.completed_date;
+            
+        const next_maintenance_date = historyData.next_maintenance_date instanceof Date 
+            ? historyData.next_maintenance_date.toISOString() 
+            : historyData.next_maintenance_date;
+        
         // Insert history record - measure critical operation time
         console.log("Step 1: Inserting into equipment_history");
         const insertStart = Date.now();
         const { data: result, error } = await supabase
             .from('equipment_history')
             .insert({
-                performed_date: historyData.performed_date,
-                completed_date: historyData.completed_date,
+                performed_date: performed_date,
+                completed_date: completed_date,
                 description: historyData.description,
                 technician_notes: historyData.technician_notes,
                 schedule_id: historyData.schedule_id,
                 work_performed: historyData.work_performed,
                 parts_used: historyData.parts_used,
-                next_maintenance_date: historyData.next_maintenance_date,
+                next_maintenance_date: next_maintenance_date,
                 state: historyData.state
             })
             .select()

@@ -227,9 +227,16 @@ export function MaintenanceHistoryForm({
         const submitStartTime = Date.now();
         
         if (mode === 'maintenance') {
+          // Normalize dates to noon to prevent timezone issues
+          const performedDate = new Date(values.performed_date);
+          performedDate.setHours(12, 0, 0, 0);
+          
+          const completedDate = new Date(values.completed_date);
+          completedDate.setHours(12, 0, 0, 0);
+          
           const maintenanceData: MaintenanceData = {
-            performed_date: values.performed_date,
-            completed_date: values.completed_date,
+            performed_date: performedDate,
+            completed_date: completedDate,
             description: values.description,
             technician_notes: values.technician_notes,
             schedule_id: scheduleId,
@@ -246,9 +253,16 @@ export function MaintenanceHistoryForm({
             timeoutPromise
           ]);
         } else if (mode === 'calibration') {
+          // Normalize dates to noon to prevent timezone issues
+          const performedDate = new Date(values.performed_date);
+          performedDate.setHours(12, 0, 0, 0);
+          
+          const completedDate = new Date(values.completed_date);
+          completedDate.setHours(12, 0, 0, 0);
+          
           const calibrationData: CalibrationData = {
-            performed_date: values.performed_date,
-            completed_date: values.completed_date,
+            performed_date: performedDate,
+            completed_date: completedDate,
             description: values.description,
             technician_notes: values.technician_notes,
             calibration_schedule_id: scheduleId,
@@ -264,9 +278,16 @@ export function MaintenanceHistoryForm({
             timeoutPromise
           ]);
         } else {
+          // Normalize dates to noon to prevent timezone issues
+          const performedDate = new Date(values.performed_date);
+          performedDate.setHours(12, 0, 0, 0);
+          
+          const completedDate = new Date(values.completed_date);
+          completedDate.setHours(12, 0, 0, 0);
+          
           const externalControlData: ExternalControlData = {
-            performed_date: values.performed_date,
-            completed_date: values.completed_date,
+            performed_date: performedDate,
+            completed_date: completedDate,
             description: values.description,
             technician_notes: values.technician_notes,
             external_control_id: scheduleId,
