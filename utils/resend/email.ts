@@ -1,16 +1,8 @@
 'use server'
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// Create reusable transporter object using SMTP transport
-const transporter = nodemailer.createTransport({
-  host: 'lablaboman.live',
-  port: 465,
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: 'noreplay@lablaboman.live',
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+// Initialize Resend with API key from environment variable
+const resend = new Resend(process.env.RESEND_API_KEY || '');
 
 interface EmailParams {
   to: string[];
@@ -20,12 +12,17 @@ interface EmailParams {
 
 export async function sendEmail({ to, title, body }: EmailParams): Promise<{ success: boolean; message: string }> {
   try {
-    await transporter.sendMail({
-      from: '"LabLaboman" <noreplay@lablaboman.live>',
-      to: to.join(', '),
+    const { data, error } = await resend.emails.send({
+      from: 'LabLaboman <noreplay@lablaboman.live>',
+      to: to,
       subject: title,
       html: `<p>${body}</p>`
     });
+
+    if (error) {
+      console.error('Error sending email:', error);
+      return { success: false, message: 'Failed to send email' };
+    }
 
     return { success: true, message: 'Email sent successfully' };
   } catch (error) {
