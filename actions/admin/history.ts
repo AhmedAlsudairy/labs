@@ -193,7 +193,43 @@ export async function addMaintenanceHistory(
                 const { data: userData } = await supabase.auth
                     .admin.getUserById(lab.manager_id);
 
-                // ...email sending code...
+                // Send email notification about maintenance history update
+                try {
+                    const coordinator_email = cordinator?.[0]?.email;
+                    const manager_email = userData?.user?.email;
+                    
+                    // Get equipment details for more informative email
+                    const { data: equipmentData } = await supabase
+                        .from('equipment')
+                        .select('*, device(*)')
+                        .eq('equipment_id', equipment_id)
+                        .single();
+                    
+                    const equipmentName = equipmentData?.device?.[0]?.name || 'Unknown Equipment';
+                    const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${lab_id}/${equipment_id}`;
+                    
+                    const emailContent = {
+                        to: [coordinator_email, manager_email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
+                        title: `Maintenance History Update: ${equipmentName}`,
+                        body: `
+                            Equipment: ${equipmentName}<br/>
+                            Maintenance Date: ${performed_date}<br/>
+                            Work Performed: ${historyData.work_performed}<br/>
+                            Description: ${historyData.description}<br/>
+                            Status: ${historyData.state}<br/>
+                            Next Maintenance Date: ${next_maintenance_date}<br/>
+                            <br/>
+                            View equipment details: <a href="${equipmentUrl}">Click here</a>
+                        `
+                    };
+                    
+                    console.log(`[Email Debug] Sending maintenance history notification to:`, emailContent.to.join(', '));
+                    const emailResult = await sendEmail(emailContent);
+                    console.log(`[Email Debug] Maintenance history email result:`, emailResult);
+                } catch (emailError) {
+                    console.error("Error sending maintenance history email notification:", emailError);
+                    // Continue execution even if email fails
+                }
                 
                 console.log(`Background operations took ${Date.now() - notifyStart}ms`);
                 console.log("Step 4: Updating maintenance schedules");
