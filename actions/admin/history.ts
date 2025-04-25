@@ -519,7 +519,7 @@ export async function addExternalControlHistory(
 
         // Determine the appropriate state and next date for the external control
         let newState = data.external_control_state || 'E.Q.C  Reception';
-        let newNextDate;
+        let newNextDate: string | Date | undefined;
         
         // Use string comparison since we're comparing with a specific string value of external control state
         if (data.external_control_state && data.external_control_state =='calibrated') {
