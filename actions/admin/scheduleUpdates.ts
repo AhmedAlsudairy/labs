@@ -42,7 +42,10 @@ function determineMaintenanceState(nextDate: Date): MaintenanceState {
   // Calculate days difference (will be negative if nextDate is in the past)
   const daysDiff = (normalizedNextDate.getTime() - normalizedToday.getTime()) / (1000 * 60 * 60 * 24);
   
-  console.log(`[Debug] Date comparison for maintenance state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  // Restrict debug logging to development environment
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Debug] Date comparison for maintenance state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  }
   
   if (daysDiff < 0) {
     return 'late maintance';  // Past due date
@@ -67,7 +70,10 @@ function determineCalibrationState(nextDate: Date): CalibrationState {
   // Calculate days difference (will be negative if nextDate is in the past)
   const daysDiff = (normalizedNextDate.getTime() - normalizedToday.getTime()) / (1000 * 60 * 60 * 24);
   
-  console.log(`[Debug] Date comparison for calibration state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  // Remove verbose logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Debug] Date comparison for calibration state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  }
   
   if (daysDiff < 0) {
     return 'late calibration';  // Past due date
@@ -92,7 +98,10 @@ function determineExternalControlState(nextDate: Date): ExternalControlState {
   // Calculate days difference (will be negative if nextDate is in the past)
   const daysDiff = (normalizedNextDate.getTime() - normalizedToday.getTime()) / (1000 * 60 * 60 * 24);
   
-  console.log(`[Debug] Date comparison for external control state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  // Restrict debug logging to development environment
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Debug] Date comparison for external control state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  }
   
   if (daysDiff < 0) {
     return 'E.Q.C  Reception'; // Past due date
