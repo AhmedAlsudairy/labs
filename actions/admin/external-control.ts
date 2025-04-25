@@ -68,37 +68,75 @@ export async function addExternalControl(data: Omit<ExternalControl, 'control_id
   }
 }
 
-export async function updateExternalControl(control_id: number, data: Partial<ExternalControl>) {
+// Update external control record
+export async function updateExternalControl(
+  controlId: number, 
+  recordData: Partial<ExternalControl>
+): Promise<ExternalControl> {
   try {
-    let nextDate: string = data.next_date || '';
+    // If date and frequency provided, calculate next date
+    let nextDate: string | undefined = recordData.next_date;
     
-    if (data.next_date && data.frequency) {
-      // Convert string date to Date object
-      const dateObj = new Date(data.next_date);
-      const calculatedDate = calculateNextDate(data.frequency, dateObj);
-      // Convert back to string format for DB
+    if (recordData.next_date && recordData.frequency) {
+      // Convert string date to Date object for calculation
+      const dateObj = new Date(recordData.next_date);
+      // Set time to noon to prevent timezone issues
+      dateObj.setHours(12, 0, 0, 0);
+      // Fixed the parameter order: frequency first, then date
+      const calculatedDate = calculateNextDate(recordData.frequency, dateObj);
+      // Format as YYYY-MM-DD for consistency
       nextDate = calculatedDate.toISOString().split('T')[0];
     }
+    
+    // Check latest history for this external control to determine state
+    const { data: latestHistory, error: historyError } = await supabase
+      .from('equipment_history')
+      .select('*')
+      .eq('external_control_id', controlId)
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    const { error } = await supabase
+    // Use provided state or get from latest history, fallback to current state
+    let stateToUse = recordData.state;
+    
+    if (latestHistory && latestHistory.length > 0) {
+      console.log(`Found latest history for external control ${controlId}:`, latestHistory[0]);
+      // Use the external_control_state from latest history entry
+      stateToUse = latestHistory[0].external_control_state;
+    }
+
+    const { data, error } = await supabase
       .from('external_control')
       .update({
         next_date: nextDate,
-        description: data.description,
-        frequency: data.frequency,
-        responsible: data.responsible,
-        equipment_id: data.equipment_id,
-        state: data.state,
-        updated_by: data.updated_by,
+        frequency: recordData.frequency,
+        description: recordData.description,
+        state: stateToUse, // Use state from history if available
+        responsible: recordData.responsible,
         last_updated: new Date().toISOString(),
+        updated_by: 'manual'
       })
-      .eq('control_id', control_id);
+      .eq('control_id', controlId)
+      .select()
+      .single();
 
     if (error) throw error;
-    return true;
+    
+    return {
+      control_id: data.control_id,
+      equipment_id: data.equipment_id,
+      next_date: data.next_date,
+      state: data.state,
+      responsible: data.responsible,
+      description: data.description || 'External control',
+      frequency: data.frequency,
+      // Add the missing properties required by the ExternalControl type
+      updated_by: data.updated_by || 'manual',
+      last_updated: data.last_updated || new Date().toISOString()
+    };
   } catch (error) {
     console.error('Error updating external control:', error);
-    return false;
+    throw error;
   }
 }
 

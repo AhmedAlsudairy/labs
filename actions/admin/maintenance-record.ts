@@ -24,11 +24,27 @@ export async function updateMaintenanceRecord(
       // Set time to noon to prevent timezone issues
       dateObj.setHours(12, 0, 0, 0);
       const calculatedDate = calculateNextDate(recordData.frequency, dateObj);
-      // Store the date with time component to preserve timezone handling
-      // This ensures consistent date representation across the application
-      nextDate = calculatedDate.toISOString();
+      // Format as YYYY-MM-DD for consistency
+      nextDate = calculatedDate.toISOString().split('T')[0];
     }
   
+    // Check latest history for this maintenance schedule to determine state
+    const { data: latestHistory, error: historyError } = await supabase
+      .from('equipment_history')
+      .select('*')
+      .eq('schedule_id', recordId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    // Use provided state or get from latest history, fallback to current state
+    let stateToUse = recordData.state;
+    
+    if (latestHistory && latestHistory.length > 0) {
+      console.log(`Found latest history for maintenance ${recordId}:`, latestHistory[0]);
+      // Use the state from latest history entry
+      stateToUse = latestHistory[0].state;
+    }
+
     const { data, error } = await supabase
       .from('maintenance_schedule')
       .update({
@@ -36,8 +52,10 @@ export async function updateMaintenanceRecord(
         equipment_id: recordData.equipmentId,
         frequency: recordData.frequency,
         description: recordData.description,
-        state: recordData.state,
+        state: stateToUse, // Use state from history if available
         responsible: recordData.responsible,
+        last_updated: new Date().toISOString(),
+        updated_by: 'manual'
       })
       .eq('schedule_id', recordId)
       .select()
@@ -51,7 +69,7 @@ export async function updateMaintenanceRecord(
       date: data.next_date,
       equipmentId: data.equipment_id,
       state: data.state,
-   responsible: data.responsible,
+      responsible: data.responsible,
       description: data.description || 'Scheduled maintenance',
       frequency: data.frequency
     };

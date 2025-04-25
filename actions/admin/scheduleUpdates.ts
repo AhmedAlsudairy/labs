@@ -35,12 +35,19 @@ function determineMaintenanceState(nextDate: Date): MaintenanceState {
   }
 
   const today = new Date();
-  const daysDiff = (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  // Normalize both dates to remove time component for accurate comparison
+  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const normalizedNextDate = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
   
-  if (daysDiff < -2) {
-    return 'late maintance';
-  } else if (daysDiff <= 0) {
-    return 'need maintance';
+  // Calculate days difference (will be negative if nextDate is in the past)
+  const daysDiff = (normalizedNextDate.getTime() - normalizedToday.getTime()) / (1000 * 60 * 60 * 24);
+  
+  console.log(`[Debug] Date comparison for maintenance state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
+  
+  if (daysDiff < 0) {
+    return 'late maintance';  // Past due date
+  } else if (daysDiff === 0) {
+    return 'need maintance';  // Due today
   }
   return 'done';
 }
@@ -53,12 +60,19 @@ function determineCalibrationState(nextDate: Date): CalibrationState {
   }
 
   const today = new Date();
-  const daysDiff = (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  // Normalize both dates to remove time component for accurate comparison
+  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const normalizedNextDate = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+  
+  // Calculate days difference (will be negative if nextDate is in the past)
+  const daysDiff = (normalizedNextDate.getTime() - normalizedToday.getTime()) / (1000 * 60 * 60 * 24);
+  
+  console.log(`[Debug] Date comparison for calibration state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
   
   if (daysDiff < 0) {
-    return 'late calibration';
-  } else if (daysDiff <= 3) { // Fix: Changed from <= 0 to <= 3 to give early warning
-    return 'need calibration';
+    return 'late calibration';  // Past due date
+  } else if (daysDiff === 0) {
+    return 'need calibration';  // Due today
   }
   return 'calibrated';
 }
@@ -71,14 +85,69 @@ function determineExternalControlState(nextDate: Date): ExternalControlState {
   }
   
   const today = new Date();
-  const daysDiff = (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  // Normalize both dates to remove time component for accurate comparison
+  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const normalizedNextDate = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+  
+  // Calculate days difference (will be negative if nextDate is in the past)
+  const daysDiff = (normalizedNextDate.getTime() - normalizedToday.getTime()) / (1000 * 60 * 60 * 24);
+  
+  console.log(`[Debug] Date comparison for external control state: nextDate=${normalizedNextDate.toISOString()}, today=${normalizedToday.toISOString()}, daysDiff=${daysDiff}`);
   
   if (daysDiff < 0) {
-    return 'E.Q.C  Reception'; // Red - Latee
-  } else if (daysDiff <= 7) {
-    return 'Final Date'; // Yellow - In date but close
+    return 'E.Q.C  Reception'; // Past due date
+  } else if (daysDiff === 0) {
+    return 'Final Date'; // Due today
   }
-  return 'Done'; // Green - In date
+  return 'Done'; // In date
+}
+
+// Check for latest history record and determine if we should override the state
+async function checkLatestHistoryState(scheduleId: number, type: 'maintenance' | 'calibration' | 'external'): Promise<{state: string | null, nextDate: string | null}> {
+  const idField = type === 'maintenance' ? 'schedule_id' : 
+                  type === 'calibration' ? 'calibration_schedule_id' : 
+                  'external_control_id';
+  
+  const stateField = type === 'external' ? 'external_control_state' : 'state';
+  const nextDateField = type === 'maintenance' ? 'next_maintenance_date' : 
+                        type === 'calibration' ? 'next_calibration_date' : 
+                        null;
+  
+  console.log(`[Debug] Checking for latest history for ${type} ${scheduleId}`);
+  
+  // Get the latest history record for this schedule - ordering by performed_date DESC, created_at DESC
+  // This ensures we get the newest record first
+  const { data, error } = await supabase
+    .from('equipment_history')
+    .select('*')
+    .eq(idField, scheduleId)
+    .order('performed_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1);
+  
+  if (error) {
+    console.error(`[Debug] Error fetching history for ${type} ${scheduleId}:`, error);
+    return { state: null, nextDate: null };
+  }
+  
+  if (!data || data.length === 0) {
+    console.log(`[Debug] No history found for ${type} ${scheduleId}`);
+    return { state: null, nextDate: null }; // No history found
+  }
+  
+  const latestHistory = data[0];
+  console.log(`[Debug] Found latest history for ${type} ${scheduleId}:`, {
+    history_id: latestHistory.history_id,
+    performed_date: latestHistory.performed_date,
+    state: latestHistory[stateField],
+    nextDate: nextDateField ? latestHistory[nextDateField] : null
+  });
+  
+  // Return both the state and next date from history
+  return { 
+    state: latestHistory[stateField],
+    nextDate: nextDateField ? latestHistory[nextDateField] : null
+  };
 }
 
 // Helper function to check if a schedule was recently updated manually
@@ -132,20 +201,45 @@ export async function updateMaintenanceSchedules() {
     for (const schedule of maintenanceSchedules || []) {
       try {
         // Skip if recently updated manually or in need/late maintenance state with manual update
+        // But if the state is 'done' and date is late, we should update it regardless
         if (schedule.updated_by === 'manual' && 
             (schedule.state === 'need maintance' || schedule.state === 'late maintance')) {
           console.log(`Skipping maintenance schedule ${schedule.schedule_id} - manually marked as ${schedule.state}`);
           continue;
         }
-
+        
+        // Check if it's manually marked as 'done' but the date is actually late
         const nextDate = new Date(schedule.next_date);
         const state = determineMaintenanceState(nextDate);
         const previousState = schedule.state;
         
-        // Only update if state would change to done or if it's an automatic update
-        let newNextDate = schedule.next_date;
-        if (schedule.updated_by !== 'manual' || state === 'done') {
-          if (state === 'done') {
+        // Always update if a manual 'done' is actually late based on date
+        const manualDoneButLate = schedule.updated_by === 'manual' && 
+                                  schedule.state === 'done' && 
+                                  (state === 'need maintance' || state === 'late maintance');
+        
+        if (manualDoneButLate) {
+          console.log(`[Debug] Maintenance schedule ${schedule.schedule_id} is manually marked as 'done' but is actually ${state} based on date`);
+        }
+
+        // Check if there's a recent history record that should override the state and next date
+        const { state: historyState, nextDate: historyNextDate } = await checkLatestHistoryState(schedule.schedule_id, 'maintenance');
+        if (historyState) {
+          console.log(`[Debug] Found history state '${historyState}' for maintenance schedule ${schedule.schedule_id}, will use this instead of calculated state`);
+        }
+        if (historyNextDate) {
+          console.log(`[Debug] Found history next_date '${historyNextDate}' for maintenance schedule ${schedule.schedule_id}, will use this instead of scheduled next_date`);
+        }
+        
+        // Determine the state to use: history state takes priority if available
+        const stateToUse = historyState || state;
+        
+        // Use next date from history if available, otherwise use the schedule's next date
+        let newNextDate = historyNextDate || schedule.next_date;
+        
+        // Only update if state would change to done or if it's an automatic update or manual done but late
+        if (schedule.updated_by !== 'manual' || stateToUse === 'done' || manualDoneButLate) {
+          if (stateToUse === 'done' && !historyNextDate) {  // Only calculate new date if no history date is available
             // Use a normalized date to prevent timezone issues when calculating the next date
             const baseDate = new Date();
             baseDate.setHours(12, 0, 0, 0);
@@ -161,7 +255,7 @@ export async function updateMaintenanceSchedules() {
               .from('maintenance_schedule')
               .update({
                 next_date: newNextDate,
-                state: state,
+                state: stateToUse,
                 last_updated: new Date().toISOString(),
                 updated_by: 'automatic'
               })
@@ -183,9 +277,9 @@ export async function updateMaintenanceSchedules() {
                 schedule_id: schedule.schedule_id,
                 performed_date: new Date().toISOString(),
                 completed_date: new Date().toISOString(),
-                state: state,
-                description: `Maintenance schedule state changed from ${previousState} to ${state}`,
-                work_performed: state === 'done' ? 'Automatic maintenance completion' : '',
+                state: stateToUse,
+                description: `Maintenance schedule state changed from ${previousState} to ${stateToUse}`,
+                work_performed: stateToUse === 'done' ? 'Automatic maintenance completion' : '',
                 next_maintenance_date: newNextDate
               });
 
@@ -206,13 +300,15 @@ export async function updateMaintenanceSchedules() {
           updatedSchedules.push({
             id: schedule.schedule_id,
             previousState,
-            newState: state,
+            newState: stateToUse,
             nextDate: newNextDate
           });
 
           // Send notifications only if state changed and isn't 'done'
-          if (state !== 'done' && state !== previousState && schedule.equipment?.laboratory?.manager_id) {
-            const emailResult = await sendMaintenanceNotification(schedule, state, newNextDate);
+          if (stateToUse !== 'done' && stateToUse !== previousState && schedule.equipment?.laboratory?.manager_id) {
+            // Cast stateToUse to MaintenanceState since we know it's a valid state
+            const typedState = stateToUse as MaintenanceState;
+            const emailResult = await sendMaintenanceNotification(schedule, typedState, newNextDate);
             if (emailResult?.success) {
               notificationsSent++;
               console.log(`[Email Debug] Successfully sent maintenance notification for schedule ${schedule.schedule_id}`);
@@ -288,10 +384,28 @@ export async function updateCalibrationSchedules() {
         const state = determineCalibrationState(nextDate);
         const previousState = schedule.state;
         
-        // Only update if state would change to calibrated or if it's an automatic update
+        // Always update if a manual 'calibrated' is actually late based on date
+        const manualCalibratedButLate = schedule.updated_by === 'manual' && 
+                                       schedule.state === 'calibrated' && 
+                                       (state === 'need calibration' || state === 'late calibration');
+        
+        if (manualCalibratedButLate) {
+          console.log(`[Debug] Calibration schedule ${schedule.calibration_schedule_id} is manually marked as 'calibrated' but is actually ${state} based on date`);
+        }
+        
+        // Check if there's a recent history record that should override the state
+        const { state: historyState } = await checkLatestHistoryState(schedule.calibration_schedule_id, 'calibration');
+        if (historyState) {
+          console.log(`[Debug] Found history state '${historyState}' for calibration schedule ${schedule.calibration_schedule_id}, will use this instead of calculated state`);
+        }
+        
+        // Determine the state to use: history state takes priority if available
+        const stateToUse = historyState || state;
+        
+        // Only update if state would change to calibrated or if it's an automatic update or manual calibrated but late
         let newNextDate = schedule.next_date;
-        if (schedule.updated_by !== 'manual' || state === 'calibrated') {
-          if (state === 'calibrated') {
+        if (schedule.updated_by !== 'manual' || stateToUse === 'calibrated' || manualCalibratedButLate) {
+          if (stateToUse === 'calibrated') {
             // Use a normalized date to prevent timezone issues when calculating the next date
             const baseDate = new Date();
             baseDate.setHours(12, 0, 0, 0);
@@ -443,22 +557,66 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
         const state = determineExternalControlState(nextDate);
         const previousState = control.state;
         
-        // Only update if state would change to Done or if it's an automatic update
+        // Enhanced debugging for external control status check
+        console.log(`[Debug] External Control ID ${control.control_id} check:`);
+        console.log(`[Debug] - Current state: ${previousState}`);
+        console.log(`[Debug] - Next date: ${control.next_date}`);
+        console.log(`[Debug] - Parsed nextDate: ${nextDate}`);
+        console.log(`[Debug] - Calculated new state: ${state}`);
+        console.log(`[Debug] - Last updated: ${control.last_updated}`);
+        console.log(`[Debug] - Updated by: ${control.updated_by}`);
+        
+        // Check if it's manually marked as 'Done' but the date is actually late
+        const manualDoneButLate = control.updated_by === 'manual' && 
+                                 control.state === 'Done' && 
+                                 (state === 'Final Date' || state === 'E.Q.C  Reception');
+                                 
+        if (manualDoneButLate) {
+          console.log(`[Debug] - External Control ${control.control_id} is manually marked as 'Done' but is actually ${state} based on date`);
+        }
+        
+        // Check if there's a recent history record that should override the state
+        const { state: historyState } = await checkLatestHistoryState(control.control_id, 'external');
+        if (historyState) {
+          console.log(`[Debug] - Found history state '${historyState}' for external control ${control.control_id}, will use this instead of calculated state`);
+        }
+        
+        // Determine the state to use: history state takes priority if available
+        const stateToUse = historyState || state;
+        
+        // Only update if state would change to Done or if it's an automatic update or manual Done but late
         let newNextDate = control.next_date;
-        if (control.updated_by !== 'manual' || state === 'Done') {
-          if (state === 'Done') {
+        if (control.updated_by !== 'manual' || stateToUse === 'Done' || manualDoneButLate) {
+          console.log(`[Debug] - External Control ${control.control_id} will be updated`);
+          console.log(`[Debug] - Update condition: updated_by=${control.updated_by}, state=${state}`);
+          
+          if (stateToUse === 'Done') {
             // Use a normalized date to prevent timezone issues when calculating the next date
             const baseDate = new Date();
             baseDate.setHours(12, 0, 0, 0);
+            console.log(`[Debug] - Calculating new next date from base: ${baseDate.toISOString()}`);
+            console.log(`[Debug] - Using frequency: ${control.frequency}`);
+            
             const nextDateObj = calculateNextDate(baseDate, control.frequency);
+            console.log(`[Debug] - New calculated date object: ${nextDateObj.toISOString()}`);
+            
             // Format as YYYY-MM-DD to ensure consistency when storing in the database
             newNextDate = nextDateObj.toISOString().split('T')[0];
+            console.log(`[Debug] - Formatted new next date: ${newNextDate}`);
           }
 
           // Update external control and create history separately instead of using RPC function
           try {
+            console.log(`[Debug] - Attempting to update External Control ${control.control_id} in database`);
+            console.log(`[Debug] - Update payload:`, {
+              next_date: newNextDate,
+              state: state,
+              last_updated: new Date().toISOString(),
+              updated_by: 'automatic'
+            });
+            
             // 1. Update the external control record
-            const { error: updateError } = await supabase
+            const { data: updateData, error: updateError } = await supabase
               .from('external_control')
               .update({
                 next_date: newNextDate,
@@ -466,15 +624,21 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
                 last_updated: new Date().toISOString(),
                 updated_by: 'automatic'
               })
-              .eq('control_id', control.control_id);
-
+              .eq('control_id', control.control_id)
+              .select();
+              
+            console.log(`[Debug] - Update response:`, updateData || 'No data returned');
+            
             if (updateError) {
-              console.error('Error updating external control:', updateError);
+              console.error('[Debug] Error updating external control:', updateError);
+              console.error('[Debug] Error details:', JSON.stringify(updateError));
               failedControls.push({
                 id: control.control_id,
                 error: updateError
               });
               continue;
+            } else {
+              console.log(`[Debug] - External Control ${control.control_id} successfully updated in database`);
             }
 
             // 2. Create a history record
@@ -539,9 +703,130 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
   }
 }
 
+/**
+ * Utility function to force-update maintenance schedules based on the latest history records
+ * This is useful to ensure schedule dates match the latest history entries
+ */
+export async function syncMaintenanceSchedulesWithHistory() {
+  console.log('Starting syncMaintenanceSchedulesWithHistory at', new Date().toISOString());
+  
+  try {
+    // Get all maintenance schedules
+    const { data: schedules, error: schedulesError } = await supabase
+      .from('maintenance_schedule')
+      .select('*');
+      
+    if (schedulesError) {
+      console.error('Error fetching maintenance schedules:', schedulesError);
+      return { success: false, error: schedulesError, message: 'Failed to fetch maintenance schedules' };
+    }
+    
+    const updatedSchedules = [];
+    const failedSchedules = [];
+    
+    // Process each schedule
+    for (const schedule of schedules || []) {
+      try {
+        console.log(`Processing maintenance schedule ID ${schedule.schedule_id}`);
+        
+        // Get the latest history record for this schedule - using both performed_date and created_at
+        // to ensure we get the absolute latest record
+        const { data: historyRecords, error: historyError } = await supabase
+          .from('equipment_history')
+          .select('*')
+          .eq('schedule_id', schedule.schedule_id)
+          .order('performed_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (historyError) {
+          console.error(`Error fetching history for schedule ${schedule.schedule_id}:`, historyError);
+          failedSchedules.push({ id: schedule.schedule_id, error: historyError });
+          continue;
+        }
+        
+        // Skip if no history records found
+        if (!historyRecords || historyRecords.length === 0) {
+          console.log(`No history records found for schedule ${schedule.schedule_id}, skipping`);
+          continue;
+        }
+        
+        const latestHistory = historyRecords[0];
+        console.log(`Found latest history record:`, {
+          history_id: latestHistory.history_id,
+          performed_date: latestHistory.performed_date,
+          next_maintenance_date: latestHistory.next_maintenance_date || 'not set'
+        });
+        
+        // Only update if the history record has a next_maintenance_date
+        if (latestHistory.next_maintenance_date) {
+          console.log(`Found next_maintenance_date ${latestHistory.next_maintenance_date} in history for schedule ${schedule.schedule_id}`);
+          
+          // Calculate the state based on this next date
+          const nextDate = new Date(latestHistory.next_maintenance_date);
+          const state = determineMaintenanceState(nextDate);
+          
+          console.log(`Updating schedule ${schedule.schedule_id} with next_date=${latestHistory.next_maintenance_date}, state=${state}`);
+          
+          // Update the maintenance schedule
+          const { error: updateError } = await supabase
+            .from('maintenance_schedule')
+            .update({
+              next_date: latestHistory.next_maintenance_date,
+              state: state,
+              last_updated: new Date().toISOString(),
+              updated_by: 'automatic' // Changed from 'sync-utility' to 'automatic' to match allowed values
+            })
+            .eq('schedule_id', schedule.schedule_id);
+            
+          if (updateError) {
+            console.error(`Error updating schedule ${schedule.schedule_id}:`, updateError);
+            failedSchedules.push({ id: schedule.schedule_id, error: updateError });
+          } else {
+            updatedSchedules.push({ 
+              id: schedule.schedule_id, 
+              previousDate: schedule.next_date,
+              newDate: latestHistory.next_maintenance_date,
+              previousState: schedule.state,
+              newState: state
+            });
+          }
+        } else {
+          console.log(`No next_maintenance_date found in history for schedule ${schedule.schedule_id}, skipping`);
+        }
+      } catch (scheduleError) {
+        console.error(`Error processing schedule ${schedule.schedule_id}:`, scheduleError);
+        failedSchedules.push({ id: schedule.schedule_id, error: scheduleError });
+      }
+    }
+    
+    console.log(`Completed syncMaintenanceSchedulesWithHistory at ${new Date().toISOString()}`);
+    console.log(`Updated ${updatedSchedules.length} schedules, failed ${failedSchedules.length}`);
+    
+    return {
+      success: true,
+      updatedCount: updatedSchedules.length,
+      failedCount: failedSchedules.length,
+      updatedSchedules,
+      failedSchedules
+    };
+  } catch (error) {
+    console.error('Error in syncMaintenanceSchedulesWithHistory:', error);
+    return { success: false, error, message: 'Internal error in sync utility' };
+  }
+}
+
 // Helper function for maintenance notifications
 async function sendMaintenanceNotification(schedule: any, state: MaintenanceState, newNextDate: Date) {
   console.log(`[Email Debug] Starting maintenance notification for equipment ID ${schedule.equipment_id}, state: ${state}`);
+  console.log(`[Email Debug] Schedule details for notification check:`, {
+    schedule_id: schedule.schedule_id,
+    equipment_id: schedule.equipment_id,
+    state: state,
+    previousState: schedule.state,
+    nextDate: newNextDate,
+    laboratory_manager_id: schedule.equipment?.laboratory?.manager_id || 'missing'
+  });
   
   try {
     const { data: userData } = await supabase.auth
@@ -554,13 +839,19 @@ async function sendMaintenanceNotification(schedule: any, state: MaintenanceStat
       });
     console.log(`[Email Debug] Coordinator data:`, cordinator?.[0]?.email || 'No coordinator email found');
 
+    // Check if we have valid recipients
+    if (!userData?.user?.email && (!cordinator || cordinator.length === 0)) {
+      console.log(`[Email Debug] No valid recipients found for notification! Manager ID: ${schedule.equipment.laboratory.manager_id}`);
+    }
+
     const cordinator_email = cordinator?.[0]?.email;
     const equipmentUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/protected/labs/${schedule.equipment.laboratory.lab_id}/${schedule.equipment_id}`;
     
     const emailContent = {
       to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-      title: `Equipment Maintenance Schedule Alert: ${state}`,
+      title: `Equipment Maintenance Schedule Alert: ${state} - ${schedule.equipment.laboratory.name}`,
       body: `
+        Lab: ${schedule.equipment.laboratory.name}<br/>
         Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
         Current Status: ${state}<br/>
         Next maintenance date: ${newNextDate}<br/>
@@ -604,8 +895,9 @@ async function sendCalibrationNotification(schedule: any, state: CalibrationStat
     
     const emailContent = {
       to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-      title: `Equipment Calibration Schedule Alert: ${state}`,
+      title: `Equipment Calibration Schedule Alert: ${state} - ${schedule.equipment.laboratory.name}`,
       body: `
+        Lab: ${schedule.equipment.laboratory.name}<br/>
         Equipment: ${schedule.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
         Current Status: ${state}<br/>
         Next calibration date: ${newNextDate}<br/>
@@ -630,7 +922,7 @@ async function sendCalibrationNotification(schedule: any, state: CalibrationStat
 }
 
 // Helper function for external control notifications
-async function sendExternalControlNotification(control: any, state: ExternalControlState, newNextDate: Date) {
+async function sendExternalControlNotification(control: any, state: ExternalControlState, newNextDate: string) {
   console.log(`[Email Debug] Starting external control notification for control ID ${control.control_id}, state: ${state}`);
   
   try {
@@ -655,9 +947,10 @@ async function sendExternalControlNotification(control: any, state: ExternalCont
 
     const emailContent = {
       to: [cordinator_email, userData?.user?.email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-      title: `External Control Schedule Alert: ${state}`,
+      title: `External Control Schedule Alert: ${state} - ${control.equipment.laboratory.name}`,
       body: `
-        Equipment: ${control.equipment.device?.name || 'Unknown Equipment'}<br/>
+        Lab: ${control.equipment.laboratory.name}<br/>
+        Equipment: ${control.equipment.device?.[0]?.name || 'Unknown Equipment'}<br/>
         Current Status: <span style="color: ${stateColors[state]}">${state}</span><br/>
         Next control date: ${newNextDate}<br/>
         Description: ${control.description || 'External control required'}<br/>

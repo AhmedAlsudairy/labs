@@ -13,7 +13,7 @@ export const translations = {
     signIn: 'Sign In',
     
     // Platform Info
-    platformTitle: 'Laboratory Equipment Management Platform in Oman',
+    platformTitle: 'OptiLab: Laboratory Equipment Management Platform in Oman',
     platformDescription: 'A complete solution that supports human, animal, and food laboratories in Oman. The platform simplifies equipment maintenance, calibration, and External Quality Control (EQC) while recording downtime to improve work efficiency.',
     keyBenefits: 'Key Benefits',
     benefits: {
@@ -44,7 +44,7 @@ export const translations = {
     signIn: 'تسجيل الدخول',
     
     // Platform Info
-    platformTitle: 'منصة إدارة المعدات المخبرية في عُمان',
+    platformTitle: 'أوبتي لاب: منصة إدارة معدات المختبرات في عمان', // Example translation, adjust as needed
     platformDescription: 'حل متكامل يدعم المختبرات البشرية والحيوانية والغذائية في عُمان. تبسط المنصة صيانة المعدات والمعايرة ومراقبة الجودة الخارجية (EQC) مع تسجيل وقت التوقف لتحسين كفاءة العمل.',
     keyBenefits: 'المزايا الرئيسية',
     benefits: {
@@ -61,4 +61,4 @@ export const translations = {
       email: 'البريد الإلكتروني'
     }
   }
-} as const;
+};

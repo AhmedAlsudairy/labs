@@ -34,6 +34,28 @@ export async function GET() {
     const results = await updateAllSchedules();
     console.log(`[Cron Debug] updateAllSchedules() completed with status: ${results.overallSuccess ? 'SUCCESS' : 'FAILURE'}`);
     
+    // Enhanced logging to debug notification issues
+    console.log(`[Notification Debug] ===== NOTIFICATION ANALYSIS =====`);
+    console.log(`[Notification Debug] Maintenance notifications sent: ${results.maintenance?.notificationsSent || 0}`);
+    console.log(`[Notification Debug] Calibration notifications sent: ${results.calibration?.notificationsSent || 0}`);
+    console.log(`[Notification Debug] External control notifications sent: ${results.externalControl?.notificationsSent || 0}`);
+    
+    if ((results.maintenance?.updatedCount || 0) > 0 && (results.maintenance?.notificationsSent || 0) === 0) {
+      console.log(`[Notification Debug] Warning: ${results.maintenance?.updatedCount} maintenance records updated but no notifications sent.`);
+      console.log(`[Notification Debug] This may be because states didn't change or all updated records were already in 'done' state.`);
+    }
+    
+    if ((results.calibration?.updatedCount || 0) > 0 && (results.calibration?.notificationsSent || 0) === 0) {
+      console.log(`[Notification Debug] Warning: ${results.calibration?.updatedCount} calibration records updated but no notifications sent.`);
+      console.log(`[Notification Debug] This may be because states didn't change or all updated records were already in 'calibrated' state.`);
+    }
+    
+    if ((results.externalControl?.updatedCount || 0) > 0 && (results.externalControl?.notificationsSent || 0) === 0) {
+      console.log(`[Notification Debug] Warning: ${results.externalControl?.updatedCount} external control records updated but no notifications sent.`);
+      console.log(`[Notification Debug] This may be because states didn't change or all updated records were already in 'Done' state.`);
+    }
+    console.log(`[Notification Debug] ===== END NOTIFICATION ANALYSIS =====`);
+    
     // Log success or failure details
     if (results.overallSuccess) {
       console.log(`[Cron Debug] Cron job completed successfully`);
