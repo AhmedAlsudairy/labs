@@ -315,7 +315,7 @@ export default function EquipmentPage() {
               equipment_id={equipmentId}
               records={externalControls.map(control => ({
                 id: control.id,
-                date: control.date,
+                date: control.date || control.next_date, // Use next_date as fallback
                 result: control.result,
                 equipmentId: control.equipmentId,
                 description: control.description || `External Control Result: ${control.result}`,

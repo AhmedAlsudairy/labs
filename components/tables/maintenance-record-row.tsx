@@ -1,5 +1,6 @@
 // components/MaintenanceRecords/MaintenanceRecordRow.tsx
 import { maintanace_state, MaintenanceRecord } from "@/types";
+import { ExternalControlState, MaintenanceRole, Frequency } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, EditIcon, Trash2, Info } from "lucide-react";
 import { TableCell, TableRow } from "../ui/table";
@@ -8,6 +9,7 @@ import { useState } from "react";
 import { MaintenanceHistoryTable } from "./maintenance-history-table";
 import { DescriptionModal } from "./description-modal";
 import { format } from 'date-fns';
+import { ExternalControlDetail } from "./external-control-detail";
 
 export type RecordMode = 'maintenance' | 'calibration' | 'external_control';
 
@@ -32,6 +34,7 @@ export default function MaintenanceRecordRow({
 }: MaintenanceRecordRowProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
+  const [showExternalControlDetail, setShowExternalControlDetail] = useState(false);
 
   const getStateColor = (state: string): "success" | "warning" | "destructive" | "default" => {
     if (mode === 'external_control') {
@@ -57,6 +60,37 @@ export default function MaintenanceRecordRow({
 
       return variants[state] || 'default';
     }
+  };
+
+  // Default values for external control properties
+  const getExternalControlNextDate = (): string => {
+    return record.date || new Date().toISOString().split('T')[0];
+  };
+
+  const getExternalControlState = (): ExternalControlState => {
+    // Convert any maintenance state to appropriate external control state
+    if (record.state === 'done') {
+      return 'Done';
+    } else if (record.state === 'Final Date' || record.state === 'need maintance' || record.state === 'need calibration') {
+      return 'Final Date';
+    } else {
+      return 'E.Q.C  Reception';
+    }
+  };
+
+  const getResponsible = (): MaintenanceRole => {
+    // Ensure we have a valid MaintenanceRole value
+    const validRoles: MaintenanceRole[] = ['lab in charge', 'biomedical', 'company engineer', 'lab technician'];
+    return validRoles.includes(record.responsible as MaintenanceRole) 
+      ? (record.responsible as MaintenanceRole) 
+      : 'lab technician';
+  };
+
+  const getFrequency = (): Frequency => {
+    const validFrequencies: Frequency[] = ['daily', 'weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'biannual', 'annually'];
+    return validFrequencies.includes(record.frequency as Frequency)
+      ? (record.frequency as Frequency)
+      : 'monthly';
   };
 
   return (
@@ -101,7 +135,20 @@ export default function MaintenanceRecordRow({
               onDelete={onDelete}
               isEditing={isEditing}
             />
-            {mode !== 'external_control' && (
+            {mode === 'external_control' ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowExternalControlDetail(!showExternalControlDetail)}
+                className="ml-2"
+              >
+                {showExternalControlDetail ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            ) : (
               <Button
                 variant="ghost"
                 size="sm"
@@ -119,6 +166,33 @@ export default function MaintenanceRecordRow({
         </TableCell>
       </TableRow>
 
+      {/* Show external control detail and history */}
+      {mode === 'external_control' && showExternalControlDetail && (
+        <TableRow>
+          <TableCell colSpan={6} className="p-0 border-t-0">
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg m-2">
+              {/* Convert record to ExternalControl format with proper type handling */}
+              <ExternalControlDetail
+                control={{
+                  control_id: record.id,
+                  equipment_id: record.equipmentId,
+                  next_date: getExternalControlNextDate(),
+                  frequency: getFrequency(),
+                  state: getExternalControlState(),
+                  responsible: getResponsible(),
+                  description: record.description || 'External control record',
+                  updated_by: 'manual',
+                  last_updated: new Date().toISOString()
+                }}
+                lab_id={lab_id}
+                onRefresh={() => {}}
+              />
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+
+      {/* Existing maintenance/calibration history display */}
       {mode !== 'external_control' && showHistory && (
         <TableRow>
           <TableCell colSpan={6} className="p-0 border-t-0">
@@ -128,7 +202,7 @@ export default function MaintenanceRecordRow({
                 mode={mode}
                 lab_id={lab_id}
                 scheduleId={record.id}
-                frequency={record.frequency}
+                frequency={getFrequency()}
                 onRefresh={() => {}}
               />
             </div>

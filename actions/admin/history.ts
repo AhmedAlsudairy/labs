@@ -455,7 +455,7 @@ export async function addCalibrationHistory(
     }
 }
 
-// Fix addExternalControlHistory function
+// Fix addExternalControlHistory function to properly handle external_control_state values
 export async function addExternalControlHistory(
     data: ExternalControlHistoryInput,
     lab_id: number,
@@ -494,7 +494,7 @@ export async function addExternalControlHistory(
                 parts_used: historyData.parts_used,
                 // Use a valid maintanace_state enum value instead of external control state
                 state: 'done', // This is maintanace_state which accepts only valid enum values
-                external_control_state: historyData.external_control_state // Store the actual external control state here
+                external_control_state: historyData.external_control_state // Store the actual external control state
             })
             .select()
             .single();
@@ -519,11 +519,12 @@ export async function addExternalControlHistory(
         }
 
         // Determine the appropriate state and next date for the external control
-        let newState = data.external_control_state || 'E.Q.C  Reception';
+        let newState = historyData.external_control_state;
         let newNextDate: string | Date | undefined;
         
-        // Use string comparison since we're comparing with a specific string value of external control state
-        if (data.external_control_state && data.external_control_state =='calibrated') {
+        // Check if state is 'Done' to calculate next date - using the correct enum value
+        // We need to explicitly check against the string value, not the enum type
+        if ((data.external_control_state as string) === 'Done') {
             console.log("State is 'Done', calculating next date");
             // Use the completed date as the base for calculating the next date
             newNextDate = calculateNextDate(
@@ -534,7 +535,7 @@ export async function addExternalControlHistory(
         } else {
             // For non-Done states, preserve the current next_date
             newNextDate = currentControl?.next_date;
-            console.log(`Using existing next date: ${newNextDate} for state: ${data.external_control_state}`);
+            console.log(`Using existing next date: ${newNextDate} for state: ${historyData.external_control_state}`);
         }
         
         // Update external control
@@ -605,16 +606,16 @@ export async function addExternalControlHistory(
                         'E.Q.C  Reception': 'red'
                     };
                     
-                    const stateColor = stateColors[data.external_control_state as keyof typeof stateColors] || 'black';
+                    const stateColor = stateColors[historyData.external_control_state as keyof typeof stateColors] || 'black';
                     
                     const emailContent = {
                         to: [coordinator_email, manager_email, 'micronboy632@gmail.com'].filter(Boolean) as string[],
-                        title: `External Control Update: ${data.external_control_state} - ${labName}`,
+                        title: `External Control Update: ${historyData.external_control_state} - ${labName}`,
                         body: `
                             Lab: ${labName}<br/>
                             Equipment: ${equipmentName}<br/>
                             External Control Date: ${performed_date}<br/>
-                            Status: <span style="color: ${stateColor}">${data.external_control_state}</span><br/>
+                            Status: <span style="color: ${stateColor}">${historyData.external_control_state}</span><br/>
                             Work Performed: ${historyData.work_performed || 'Not specified'}<br/>
                             Description: ${historyData.description}<br/>
                             Next Control Date: ${newNextDate ? new Date(newNextDate).toLocaleDateString() : 'Not set'}<br/>
@@ -666,6 +667,18 @@ export async function getExternalControlHistory(equipmentId: number) {
         .eq('equipment_id', equipmentId)
         .is('calibration_schedule_id', null)
         .is('schedule_id', null)
+        .order('performed_date', { ascending: false });
+
+    if (error) return { error };
+    return { data };
+}
+
+// Get history by external control ID
+export async function getHistoryByExternalControlId(externalControlId: number) {
+    const { data, error } = await supabase
+        .from('equipment_history')
+        .select('*')
+        .eq('external_control_id', externalControlId)
         .order('performed_date', { ascending: false });
 
     if (error) return { error };

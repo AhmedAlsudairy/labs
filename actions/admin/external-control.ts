@@ -21,7 +21,11 @@ export async function getExternalControlRecords(equipment_id: number) {
     return [];
   }
 
-  return data;
+  // Map the response to include a date field for consistency with other record types
+  return data.map(control => ({
+    ...control,
+    date: control.next_date // Add date field to match structure of maintenance/calibration records
+  }));
 }
 
 export async function addExternalControl(data: Omit<ExternalControl, 'control_id'>) {
