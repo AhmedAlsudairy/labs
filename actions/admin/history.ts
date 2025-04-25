@@ -492,8 +492,9 @@ export async function addExternalControlHistory(
                 external_control_id: historyData.external_control_id,
                 work_performed: historyData.work_performed,
                 parts_used: historyData.parts_used,
-                state: historyData.state,
-                external_control_state: historyData.external_control_state
+                // Use a valid maintanace_state enum value instead of external control state
+                state: 'done', // This is maintanace_state which accepts only valid enum values
+                external_control_state: historyData.external_control_state // Store the actual external control state here
             })
             .select()
             .single();

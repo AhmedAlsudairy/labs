@@ -18,6 +18,17 @@ function getNormalizedNoonDate(): Date {
  * It updates the states based on date calculations and handles notifications
  */
 export async function GET() {
+  // Check if this is a build-time static generation call
+  // During build time, we want to return a simple response without actually running any operations
+  if (process.env.VERCEL_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+    console.log('Build-time static generation detected. Skipping actual cron execution.');
+    return NextResponse.json({ 
+      success: true, 
+      message: 'This is a static build response. The actual cron job will run at runtime.',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   console.log(`===== CRON JOB DEBUG =====${new Date().toISOString()}=====`);
   console.log(`[Cron Debug] Environment: ${process.env.NODE_ENV || 'not set'}`);
   console.log(`[Cron Debug] Website URL: ${process.env.NEXT_PUBLIC_WEBSITE_URL || 'not set'}`);
