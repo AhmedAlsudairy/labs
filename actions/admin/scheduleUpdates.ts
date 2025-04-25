@@ -122,7 +122,10 @@ async function checkLatestHistoryState(scheduleId: number, type: 'maintenance' |
                         type === 'calibration' ? 'next_calibration_date' : 
                         null;
   
-  console.log(`[Debug] Checking for latest history for ${type} ${scheduleId}`);
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Debug] Checking for latest history for ${type} ${scheduleId}`);
+  }
   
   // Get the latest history record for this schedule - ordering by performed_date DESC, created_at DESC
   // This ensures we get the newest record first
@@ -135,22 +138,29 @@ async function checkLatestHistoryState(scheduleId: number, type: 'maintenance' |
     .limit(1);
   
   if (error) {
-    console.error(`[Debug] Error fetching history for ${type} ${scheduleId}:`, error);
+    console.error(`Error fetching history for ${type} ${scheduleId}:`, error);
     return { state: null, nextDate: null };
   }
   
   if (!data || data.length === 0) {
-    console.log(`[Debug] No history found for ${type} ${scheduleId}`);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Debug] No history found for ${type} ${scheduleId}`);
+    }
     return { state: null, nextDate: null }; // No history found
   }
   
   const latestHistory = data[0];
-  console.log(`[Debug] Found latest history for ${type} ${scheduleId}:`, {
-    history_id: latestHistory.history_id,
-    performed_date: latestHistory.performed_date,
-    state: latestHistory[stateField],
-    nextDate: nextDateField ? latestHistory[nextDateField] : null
-  });
+  
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Debug] Found latest history for ${type} ${scheduleId}:`, {
+      history_id: latestHistory.history_id,
+      performed_date: latestHistory.performed_date,
+      state: latestHistory[stateField],
+      nextDate: nextDateField ? latestHistory[nextDateField] : null
+    });
+  }
   
   // Return both the state and next date from history
   return { 
@@ -566,27 +576,29 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
         const state = determineExternalControlState(nextDate);
         const previousState = control.state;
         
-        // Enhanced debugging for external control status check
-        console.log(`[Debug] External Control ID ${control.control_id} check:`);
-        console.log(`[Debug] - Current state: ${previousState}`);
-        console.log(`[Debug] - Next date: ${control.next_date}`);
-        console.log(`[Debug] - Parsed nextDate: ${nextDate}`);
-        console.log(`[Debug] - Calculated new state: ${state}`);
-        console.log(`[Debug] - Last updated: ${control.last_updated}`);
-        console.log(`[Debug] - Updated by: ${control.updated_by}`);
+        // Only log debugging info in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Debug] External Control ID ${control.control_id} check:`);
+          console.log(`[Debug] - Current state: ${previousState}`);
+          console.log(`[Debug] - Next date: ${control.next_date}`);
+          console.log(`[Debug] - Parsed nextDate: ${nextDate}`);
+          console.log(`[Debug] - Calculated new state: ${state}`);
+          console.log(`[Debug] - Last updated: ${control.last_updated}`);
+          console.log(`[Debug] - Updated by: ${control.updated_by}`);
+        }
         
         // Check if it's manually marked as 'Done' but the date is actually late
         const manualDoneButLate = control.updated_by === 'manual' && 
                                  control.state === 'Done' && 
                                  (state === 'Final Date' || state === 'E.Q.C  Reception');
                                  
-        if (manualDoneButLate) {
+        if (manualDoneButLate && process.env.NODE_ENV === 'development') {
           console.log(`[Debug] - External Control ${control.control_id} is manually marked as 'Done' but is actually ${state} based on date`);
         }
         
         // Check if there's a recent history record that should override the state
         const { state: historyState } = await checkLatestHistoryState(control.control_id, 'external');
-        if (historyState) {
+        if (historyState && process.env.NODE_ENV === 'development') {
           console.log(`[Debug] - Found history state '${historyState}' for external control ${control.control_id}, will use this instead of calculated state`);
         }
         
@@ -596,33 +608,51 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
         // Only update if state would change to Done or if it's an automatic update or manual Done but late
         let newNextDate = control.next_date;
         if (control.updated_by !== 'manual' || stateToUse === 'Done' || manualDoneButLate) {
-          console.log(`[Debug] - External Control ${control.control_id} will be updated`);
-          console.log(`[Debug] - Update condition: updated_by=${control.updated_by}, state=${state}`);
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Debug] - External Control ${control.control_id} will be updated`);
+            console.log(`[Debug] - Update condition: updated_by=${control.updated_by}, state=${state}`);
+          }
           
           if (stateToUse === 'Done') {
             // Use a normalized date to prevent timezone issues when calculating the next date
             const baseDate = new Date();
             baseDate.setHours(12, 0, 0, 0);
-            console.log(`[Debug] - Calculating new next date from base: ${baseDate.toISOString()}`);
-            console.log(`[Debug] - Using frequency: ${control.frequency}`);
+            
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[Debug] - Calculating new next date from base: ${baseDate.toISOString()}`);
+              console.log(`[Debug] - Using frequency: ${control.frequency}`);
+            }
             
             const nextDateObj = calculateNextDate(baseDate, control.frequency);
-            console.log(`[Debug] - New calculated date object: ${nextDateObj.toISOString()}`);
+            
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[Debug] - New calculated date object: ${nextDateObj.toISOString()}`);
+            }
             
             // Format as YYYY-MM-DD to ensure consistency when storing in the database
             newNextDate = nextDateObj.toISOString().split('T')[0];
-            console.log(`[Debug] - Formatted new next date: ${newNextDate}`);
+            
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[Debug] - Formatted new next date: ${newNextDate}`);
+            }
           }
 
           // Update external control and create history separately instead of using RPC function
           try {
-            console.log(`[Debug] - Attempting to update External Control ${control.control_id} in database`);
-            console.log(`[Debug] - Update payload:`, {
-              next_date: newNextDate,
-              state: state,
-              last_updated: new Date().toISOString(),
-              updated_by: 'automatic'
-            });
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[Debug] - Attempting to update External Control ${control.control_id} in database`);
+              console.log(`[Debug] - Update payload:`, {
+                next_date: newNextDate,
+                state: state,
+                last_updated: new Date().toISOString(),
+                updated_by: 'automatic'
+              });
+            }
             
             // 1. Update the external control record
             const { data: updateData, error: updateError } = await supabase
@@ -635,18 +665,20 @@ export async function updateExternalControlSchedules(equipment_id?: number) {
               })
               .eq('control_id', control.control_id)
               .select();
-              
-            console.log(`[Debug] - Update response:`, updateData || 'No data returned');
+            
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[Debug] - Update response:`, updateData || 'No data returned');
+            }
             
             if (updateError) {
-              console.error('[Debug] Error updating external control:', updateError);
-              console.error('[Debug] Error details:', JSON.stringify(updateError));
+              console.error('Error updating external control:', updateError);
               failedControls.push({
                 id: control.control_id,
                 error: updateError
               });
               continue;
-            } else {
+            } else if (process.env.NODE_ENV === 'development') {
               console.log(`[Debug] - External Control ${control.control_id} successfully updated in database`);
             }
 
