@@ -137,6 +137,7 @@ export type CreateUserParams = {
 
 
 export type ExternalControl = {
+  next_date: string;
   id: number;
   date: string;
   result: number;
