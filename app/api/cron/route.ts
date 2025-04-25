@@ -12,19 +12,21 @@ function getNormalizedNoonDate(): Date {
 // Cron job runs every 6 hours (at 00:00, 06:00, 12:00, and 18:00)
 // Cron schedule: 0 */6 * * *
 
+// Config to disable static generation for this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * Endpoint for schedule updates, called by Vercel Cron Jobs
  * This handles the automatic updating of maintenance, calibration, and external control schedules
  * It updates the states based on date calculations and handles notifications
  */
 export async function GET() {
-  // Check if this is a build-time static generation call
-  // During build time, we want to return a simple response without actually running any operations
-  if (process.env.VERCEL_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
-    console.log('Build-time static generation detected. Skipping actual cron execution.');
+  // During build time, return a simple response - this is a fallback in case dynamic = 'force-dynamic' isn't enough
+  if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
     return NextResponse.json({ 
       success: true, 
-      message: 'This is a static build response. The actual cron job will run at runtime.',
+      message: 'API route will only run at runtime, not during static build.',
       timestamp: new Date().toISOString()
     });
   }

@@ -1060,6 +1060,21 @@ async function sendExternalControlNotification(control: any, state: ExternalCont
 
 export async function updateAllSchedules() {
   console.log('Starting updateAllSchedules at', new Date().toISOString());
+  
+  // Skip execution in preview deployments to speed up builds
+  if (process.env.VERCEL_ENV === 'preview') {
+    console.log('[Skip] Skipping schedule updates in preview environment');
+    return {
+      maintenance: { success: true, updatedCount: 0, message: 'Skipped in preview' },
+      calibration: { success: true, updatedCount: 0, message: 'Skipped in preview' },
+      externalControl: { success: true, updatedCount: 0, message: 'Skipped in preview' },
+      overallSuccess: true,
+      startTime: new Date().toISOString(),
+      endTime: new Date().toISOString(),
+      errors: []
+    };
+  }
+  
   const results = {
     maintenance: null as any,
     calibration: null as any,
