@@ -1,4 +1,4 @@
-import { MaintenanceRecord } from "@/types";
+import { MaintenanceRecord, MaintenanceStateEnum } from "@/types";
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -23,6 +23,7 @@ import {
 } from "../ui/pagination";
 import MaintenanceRecordRow from "./maintenance-record-row";
 import { useToast } from '@/hooks/use-toast';
+import { CalibrationState, ExternalControlState } from "@/lib/types";
 
 interface MaintenanceRecordsProps {
   mode: "maintenance" | "calibration" | "external_control";
@@ -189,7 +190,7 @@ export function MaintenanceRecords({
                               description: record.description,
                               frequency: record.frequency,
                               responsible: record.responsible,
-                              state: record.state
+                              state: record.state as MaintenanceStateEnum | CalibrationState | ExternalControlState | undefined
                             }}
                             onSuccess={() => {
                               setEditingId(null);
