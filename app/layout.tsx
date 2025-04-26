@@ -16,7 +16,7 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Laboratory Equipment Management Platform",
+  title: "OptiLab Platform",
   description: "A comprehensive solution for laboratory equipment management in Oman",
 };
 
@@ -40,7 +40,7 @@ export default function RootLayout({
                 <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                   <div className="w-full max-w-[2000px] flex justify-between items-center p-3 px-4">
                     <div className="flex gap-4 items-center font-semibold">
-                      <Link href="/">Laboratory Equipment Management</Link>
+                      <Link href="/">OptiLab</Link>
                       <div className="flex items-center gap-2">
                         <DeployButton />
                       </div>
@@ -63,7 +63,7 @@ export default function RootLayout({
                 <footer className="w-full border-t">
                   <div className="max-w-[2000px] mx-auto px-3 sm:px-4 py-6 flex items-center justify-center gap-4 text-xs">
                     <p>
-                      Laboratory Equipment Management Platform in Oman
+                      OptiLab Platform in Oman
                     </p>
                     <ThemeSwitcher />
                   </div>

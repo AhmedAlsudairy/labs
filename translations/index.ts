@@ -13,7 +13,7 @@ export const translations = {
     signIn: 'Sign In',
     
     // Platform Info
-    platformTitle: 'Laboratory Equipment Management Platform in Oman',
+    platformTitle: 'OptiLab Platform in Oman',
     platformDescription: 'A complete solution that supports human, animal, and food laboratories in Oman. The platform simplifies equipment maintenance, calibration, and External Quality Control (EQC) while recording downtime to improve work efficiency.',
     keyBenefits: 'Key Benefits',
     benefits: {

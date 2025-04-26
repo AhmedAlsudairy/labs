@@ -21,7 +21,7 @@ export default function Login({ searchParams }: { searchParams: Message }) {
         {/* Information Panel */}
         <div className="w-full max-w-[600px] text-white">
           <div className="bg-black/30 backdrop-blur-sm p-6 rounded-lg">
-            <h2 className="text-2xl font-bold mb-4">Laboratory Equipment Management Platform in Oman</h2>
+            <h2 className="text-2xl font-bold mb-4">OptiLab Platform in Oman</h2>
             <p className="mb-4">
               A complete solution that supports human, animal, and food laboratories in Oman. 
               The platform simplifies equipment maintenance, calibration, and External Quality Control (EQC) 
