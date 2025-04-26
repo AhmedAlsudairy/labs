@@ -101,42 +101,82 @@ async function wasRecentlyUpdatedManually(scheduleId: number, type: 'maintenance
   return data.updated_by === 'manual' && lastUpdate > hourAgo;
 }
 
+// Batch size controls how many records we process at once
+const BATCH_SIZE = 20;
+
 export async function updateMaintenanceSchedules() {
   try {
     console.log('Starting updateMaintenanceSchedules at', new Date().toISOString());
-    // Initialize notification tracking counters
+    // Initialize counters and tracking variables
     let notificationsSent = 0;
     let notificationsFailed = 0;
+    let totalProcessed = 0;
+    let batchNumber = 0;
+    let hasMore = true;
+    let updatedCount = 0;
+    let failedCount = 0;
     
-    const { data: maintenanceSchedules, error: maintenanceError } = await supabase
-      .from('maintenance_schedule')
-      .select(`
-        *,
-        equipment:equipment_id (
+    // Keep track of all updated and failed schedules across batches
+    const allUpdatedSchedules = [];
+    const allFailedSchedules = [];
+    
+    // Process in batches to prevent timeouts
+    while (hasMore) {
+      batchNumber++;
+      console.log(`Processing maintenance batch #${batchNumber}, ${totalProcessed} records processed so far`);
+      
+      // Get a batch of records
+      const { data: maintenanceSchedules, error: maintenanceError } = await supabase
+        .from('maintenance_schedule')
+        .select(`
           *,
-          device (*),
-          laboratory:lab_id (
-            *
+          equipment:equipment_id (
+            *,
+            device (*),
+            laboratory:lab_id (
+              *
+            )
           )
-        )
-      `);
+        `)
+        .range(totalProcessed, totalProcessed + BATCH_SIZE - 1);
 
-    if (maintenanceError) {
-      console.error('Error fetching maintenance schedules:', maintenanceError);
-      return { success: false, error: maintenanceError, updatedCount: 0 };
-    }
+      if (maintenanceError) {
+        console.error('Error fetching maintenance schedules:', maintenanceError);
+        return {
+          success: false,
+          error: maintenanceError,
+          updatedCount: 0,
+          failedCount: 0,
+          notificationsSent: 0,
+          notificationsFailed: 0
+        };
+      }
+      
+      // If no more records, exit the loop
+      if (!maintenanceSchedules || maintenanceSchedules.length === 0) {
+        hasMore = false;
+        break;
+      }
+      
+      totalProcessed += maintenanceSchedules.length;
+      
+      // If fewer records than batch size, we're on the last batch
+      if (maintenanceSchedules.length < BATCH_SIZE) {
+        hasMore = false;
+      }
 
-    const updatedSchedules = [];
-    const failedSchedules = [];
+      // Track schedules updated in this batch
+      const batchUpdatedSchedules = [];
+      const batchFailedSchedules = [];
 
-    for (const schedule of maintenanceSchedules || []) {
-      try {
-        // Skip if recently updated manually or in need/late maintenance state with manual update
-        if (schedule.updated_by === 'manual' && 
-            (schedule.state === 'need maintance' || schedule.state === 'late maintance')) {
-          console.log(`Skipping maintenance schedule ${schedule.schedule_id} - manually marked as ${schedule.state}`);
-          continue;
-        }
+      for (const schedule of maintenanceSchedules || []) {
+        try {
+          // Skip if recently updated manually or in need/late maintenance state with manual update
+          if (schedule.updated_by === 'manual' && 
+              (schedule.state === 'need maintance' || schedule.state === 'late maintance')) {
+            console.log(`Skipping maintenance schedule ${schedule.schedule_id} - manually marked as ${schedule.state}`);
+            continue;
+          }
 
         const nextDate = new Date(schedule.next_date);
         const state = determineMaintenanceState(nextDate);
@@ -169,7 +209,7 @@ export async function updateMaintenanceSchedules() {
 
             if (updateError) {
               console.error('Error updating maintenance schedule:', updateError);
-              failedSchedules.push({
+              batchFailedSchedules.push({
                 id: schedule.schedule_id,
                 error: updateError
               });
@@ -196,14 +236,14 @@ export async function updateMaintenanceSchedules() {
             }
           } catch (error) {
             console.error('Error in maintenance update process:', error);
-            failedSchedules.push({
+            batchFailedSchedules.push({
               id: schedule.schedule_id,
               error
             });
             continue;
           }
 
-          updatedSchedules.push({
+          batchUpdatedSchedules.push({
             id: schedule.schedule_id,
             previousState,
             newState: state,
@@ -224,22 +264,33 @@ export async function updateMaintenanceSchedules() {
         }
       } catch (scheduleError) {
         console.error(`Error processing maintenance schedule ${schedule.schedule_id}:`, scheduleError);
-        failedSchedules.push({
+        batchFailedSchedules.push({
           id: schedule.schedule_id,
           error: scheduleError
         });
       }
     }
 
-    console.log(`Completed updateMaintenanceSchedules at ${new Date().toISOString()}, updated: ${updatedSchedules.length}, failed: ${failedSchedules.length}, emails sent: ${notificationsSent}, emails failed: ${notificationsFailed}`);
+      // Add batch results to overall totals
+      updatedCount += batchUpdatedSchedules.length;
+      failedCount += batchFailedSchedules.length;
+      
+      // Add batch items to overall lists
+      allUpdatedSchedules.push(...batchUpdatedSchedules);
+      allFailedSchedules.push(...batchFailedSchedules);
+      
+      console.log(`Completed batch #${batchNumber}: ${batchUpdatedSchedules.length} updated, ${batchFailedSchedules.length} failed`);
+    } // End of while loop
+    
+    console.log(`Completed updateMaintenanceSchedules at ${new Date().toISOString()}, updated: ${updatedCount}, failed: ${failedCount}, emails sent: ${notificationsSent}, emails failed: ${notificationsFailed}`);
     return { 
       success: true, 
-      updatedCount: updatedSchedules.length,
-      failedCount: failedSchedules.length,
+      updatedCount,
+      failedCount,
       notificationsSent,
       notificationsFailed,
-      updatedSchedules,
-      failedSchedules
+      updatedSchedules: allUpdatedSchedules,
+      failedSchedules: allFailedSchedules
     };
   } catch (error) {
     console.error('Unexpected error in updateMaintenanceSchedules:', error);
@@ -247,13 +298,36 @@ export async function updateMaintenanceSchedules() {
   }
 }
 
+// Define result types to avoid type errors
+type ScheduleUpdateResult = {
+  id: number;
+  previousState: string;
+  newState: string;
+  nextDate: string;
+};
+
+type ScheduleError = {
+  id: number;
+  error: any;
+};
+
 export async function updateCalibrationSchedules() {
   try {
     console.log('Starting updateCalibrationSchedules at', new Date().toISOString());
     // Initialize notification tracking counters
     let notificationsSent = 0;
     let notificationsFailed = 0;
+    let totalProcessed = 0;
+    let batchNumber = 0;
+    let hasMore = true;
+    let updatedCount = 0;
+    let failedCount = 0;
     
+    // Keep track of all updated and failed schedules across batches
+    const allUpdatedSchedules: ScheduleUpdateResult[] = [];
+    const allFailedSchedules: ScheduleError[] = [];
+    
+    // In this function we'll define a simple batch processing approach
     const { data: calibrationSchedules, error: calibrationError } = await supabase
       .from('calibration_schedule')
       .select(`
@@ -272,8 +346,8 @@ export async function updateCalibrationSchedules() {
       return { success: false, error: calibrationError, updatedCount: 0 };
     }
 
-    const updatedSchedules = [];
-    const failedSchedules = [];
+    const updatedSchedules: ScheduleUpdateResult[] = [];
+    const failedSchedules: ScheduleError[] = [];
 
     for (const schedule of calibrationSchedules || []) {
       try {

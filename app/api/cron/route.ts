@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
-import { updateAllSchedules } from '@/actions/admin/scheduleUpdates';
+import { updateAllSchedules, updateMaintenanceSchedules, updateCalibrationSchedules, updateExternalControlSchedules } from '@/actions/admin/scheduleUpdates';
+
+// Mark this route as dynamic to prevent static prerendering
+export const dynamic = 'force-dynamic';
+
+// Set a longer duration for this route
+export const maxDuration = 300; // 5 minutes
 
 // Helper function to get a date normalized to noon (12:00:00)
 // This helps debug date calculation issues related to timezone handling
@@ -29,12 +35,47 @@ export async function GET() {
   console.log(`===== END ENVIRONMENT INFO =====`);
   
   try {
-    console.log(`[Cron Debug] Starting updateAllSchedules() call`);
-    // Execute all schedule updates and get detailed results
-    const results = await updateAllSchedules();
-    console.log(`[Cron Debug] updateAllSchedules() completed with status: ${results.overallSuccess ? 'SUCCESS' : 'FAILURE'}`);
+    console.log(`[Cron Debug] Starting cron job processing`);
     
-    // Log success or failure details
+    // Process each schedule type separately to avoid timeouts
+    // Step 1: Update maintenance schedules
+    console.log(`[Cron Debug] Starting maintenance schedules update`);
+    const maintenanceResults = await fetch(`${process.env.NEXT_PUBLIC_WEBSITE_URL}/api/cron/maintenance`, {
+      method: 'GET',
+      headers: {
+        'x-cron-secret': process.env.CRON_SECRET || ''
+      }
+    }).then(res => res.json()).catch(err => ({ success: false, error: err.message }));
+    
+    // Step 2: Update calibration schedules
+    console.log(`[Cron Debug] Starting calibration schedules update`);
+    const calibrationResults = await fetch(`${process.env.NEXT_PUBLIC_WEBSITE_URL}/api/cron/calibration`, {
+      method: 'GET',
+      headers: {
+        'x-cron-secret': process.env.CRON_SECRET || ''
+      }
+    }).then(res => res.json()).catch(err => ({ success: false, error: err.message }));
+    
+    // Step 3: Update external control schedules
+    console.log(`[Cron Debug] Starting external control schedules update`);
+    const externalControlResults = await fetch(`${process.env.NEXT_PUBLIC_WEBSITE_URL}/api/cron/external-control`, {
+      method: 'GET',
+      headers: {
+        'x-cron-secret': process.env.CRON_SECRET || ''
+      }
+    }).then(res => res.json()).catch(err => ({ success: false, error: err.message }));
+    
+    // Combine all results
+    const results = {
+      overallSuccess: maintenanceResults.success && calibrationResults.success && externalControlResults.success,
+      maintenance: maintenanceResults,
+      calibration: calibrationResults,
+      externalControl: externalControlResults,
+      startTime: new Date().toISOString(),
+      endTime: new Date().toISOString(),
+      errors: []
+    };
+    
     if (results.overallSuccess) {
       console.log(`[Cron Debug] Cron job completed successfully`);
       console.log(`[Cron Debug] Maintenance updates: ${results.maintenance?.updatedCount || 0} schedules updated`);
