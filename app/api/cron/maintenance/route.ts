@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 // Mark this route as dynamic to prevent static prerendering
 export const dynamic = 'force-dynamic';
 
-// Set a longer duration for this route
-export const maxDuration = 300; // 5 minutes
+// Set maximum duration allowed for Hobby plan
+export const maxDuration = 60; // 60 seconds (Hobby plan limit)
 
 // Initialize Supabase client
 const supabase = createClient(
