@@ -137,14 +137,19 @@ export type CreateUserParams = {
 
 
 export type ExternalControl = {
-  id: number;
-  date: string;
-  result: number;
-  equipmentId: number;
+  id?: number;          // Optional because some records might not have it
+  control_id?: number;  // This is the actual ID used in the database
+  date?: string;        // Making these optional based on your log data
+  result?: number;
+  equipmentId?: number;
   description?: string;
   state?: maintanace_state;
   responsible?: maintanace_role;
   frequency?: Frequency; // Changed from FrequencyEnum to Frequency
+  equipment_id?: number; // Some records seem to have this instead of equipmentId
+  next_date?: string;   // Some records have this based on your logs
+  last_updated?: string; // Some records have this based on your logs
+  updated_by?: string;  // Some records have this based on your logs
 };
 
 // Rename this type to avoid conflict
@@ -185,7 +190,7 @@ export enum CalibrationStateEnum {
 export enum ExternalControlStateEnum {
   DONE = 'Done',
   FINAL_DATE = 'Final Date',
-  EQC_RECEPTION = 'E.Q.C  Reception'
+  EQC_RECEPTION = 'E.Q.C Reception'
 }
 
 export enum MaintenanceRoleEnum {
@@ -197,7 +202,7 @@ export enum MaintenanceRoleEnum {
 
 // Keep the old types for backward compatibility
 export type Frequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'biannual' | 'annually';
-export type maintanace_state = 'done' | 'need maintance' | 'late maintance' | 'calibrated' | 'need calibration' | 'late calibration' | 'Final Date' | 'E.Q.C  Reception';
+export type maintanace_state = 'done' | 'need maintance' | 'late maintance' | 'calibrated' | 'need calibration' | 'late calibration' | 'Done' | 'Final Date' | 'E.Q.C Reception';
 export type maintanace_role = 'lab in charge' | 'biomedical' | 'company engineer' | 'lab technician';
 
 export type user_category= "food" | "animal" | "human"
@@ -255,7 +260,7 @@ export interface CalibrationEquipmentHistory extends BaseEquipmentHistory {
 
 // External control specific interface
 export interface ExternalControlHistory extends BaseEquipmentHistory {
-  external_control_id: number;
+  control_id?: number | null; // Allow null or undefined for temporary records
   work_performed: string;
   parts_used: string;
   next_date: Date;
@@ -271,7 +276,7 @@ export interface ExternalControlHistory extends BaseEquipmentHistory {
 // Types for form data submission
 export type MaintenanceData = Omit<MaintenanceEquipmentHistory, 'history_id'>;
 export type CalibrationData = Omit<CalibrationEquipmentHistory, 'history_id'>;
-export type ExternalControlData = Omit<ExternalControlHistory, 'history_id'>;
+export type ExternalControlData = Omit<ExternalControlHistory, 'history_id'>; // Uses control_id instead of external_control_id
 
 // Union type for all types of histories
 export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmentHistory | ExternalControlHistory;
@@ -279,4 +284,5 @@ export type EquipmentHistory = MaintenanceEquipmentHistory | CalibrationEquipmen
 // History Input Types
 export type MaintenanceHistoryInput = Omit<MaintenanceEquipmentHistory, 'history_id'>;
 export type CalibrationHistoryInput = Omit<CalibrationEquipmentHistory, 'history_id'>;
+// External control history input type - must include control_id field
 export type ExternalControlHistoryInput = Omit<ExternalControlHistory, 'history_id'>;

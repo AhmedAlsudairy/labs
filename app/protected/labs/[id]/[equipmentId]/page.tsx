@@ -313,16 +313,36 @@ export default function EquipmentPage() {
               mode="external_control"
               lab_id={labId}
               equipment_id={equipmentId}
-              records={externalControls.map(control => ({
-                id: control.id,
-                date: control.date,
-                result: control.result,
-                equipmentId: control.equipmentId,
-                description: control.description || `External Control Result: ${control.result}`,
-                frequency: control.frequency || 'monthly' as Frequency,
-                responsible: control.responsible || 'lab technician' as maintanace_role,
-                state: control.state || (control.result >= 0 ? 'done' : 'need maintance')
-              }))}
+              records={externalControls.map((control, index) => {
+                console.log(`[DEBUG][${new Date().toISOString()}] External control[${index}] RAW DATA:`, control);
+                console.log(`[DEBUG][${new Date().toISOString()}] Control ID before mapping:`, control.id, typeof control.id);
+                console.log(`[DEBUG][${new Date().toISOString()}] Control's control_id:`, control.control_id, typeof control.control_id);
+                
+                // Generate ID for controls without one
+                const generatedId = -(index + 1000);
+                
+                // Use control_id if it exists, fallback to id, then fallback to generated ID
+                const actualId = control.control_id || control.id || generatedId;
+                
+                // Make sure all fields have default values to satisfy TypeScript
+                const controlRecord = {
+                  id: actualId, // Use the best available ID
+                  date: control.date || new Date().toISOString(),
+                  result: control.result || 0,
+                  equipmentId: control.equipmentId || Number(equipmentId),
+                  description: control.description || `External Control ${actualId}`,
+                  frequency: control.frequency || 'monthly' as Frequency,
+                  responsible: control.responsible || 'lab technician' as maintanace_role,
+                  state: control.state || 'E.Q.C Reception' as maintanace_state
+                };
+                
+                // Detailed debugging info
+                console.log(`[DEBUG][${new Date().toISOString()}] External control record[${index}] MAPPED:`, controlRecord);
+                console.log(`[DEBUG][${new Date().toISOString()}] Final control ID:`, controlRecord.id, typeof controlRecord.id);
+                console.log(`[DEBUG][${new Date().toISOString()}] Is temporary ID:`, !control.id, controlRecord.id < 0);
+                
+                return controlRecord;
+              })}
               onDelete={(id) => handleDelete(id, 'external_control')}
               onSuccess={fetchDataWithRetry}
             />

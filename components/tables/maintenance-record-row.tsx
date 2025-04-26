@@ -6,6 +6,7 @@ import { TableCell, TableRow } from "../ui/table";
 import { Badge } from "../ui/badge";
 import { useState } from "react";
 import { MaintenanceHistoryTable } from "./maintenance-history-table";
+import { ExternalControlHistoryTable } from "./external-control-history-table";
 import { DescriptionModal } from "./description-modal";
 import { format } from 'date-fns';
 
@@ -101,7 +102,7 @@ export default function MaintenanceRecordRow({
               onDelete={onDelete}
               isEditing={isEditing}
             />
-            {mode !== 'external_control' && (
+            {
               <Button
                 variant="ghost"
                 size="sm"
@@ -114,23 +115,37 @@ export default function MaintenanceRecordRow({
                   <ChevronDown className="h-4 w-4" />
                 )}
               </Button>
-            )}
+            }
           </div>
         </TableCell>
       </TableRow>
 
-      {mode !== 'external_control' && showHistory && (
+      {showHistory && (
         <TableRow>
           <TableCell colSpan={6} className="p-0 border-t-0">
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg m-2">
-              <MaintenanceHistoryTable
-                equipment_id={equipment_id}
-                mode={mode}
-                lab_id={lab_id}
-                scheduleId={record.id}
-                frequency={record.frequency}
-                onRefresh={() => {}}
-              />
+              {mode === 'external_control' ? (
+                <>
+                  {console.log('Rendering external control history table with record:', record)}
+                  {console.log('Control ID being passed:', record.id, 'typeof:', typeof record.id)}
+                  <ExternalControlHistoryTable
+                    equipment_id={equipment_id}
+                    lab_id={lab_id}
+                    controlId={record.id ?? -1} // Provide fallback
+                    frequency={record.frequency}
+                    onRefresh={() => {}}
+                  />
+                </>
+              ) : (
+                <MaintenanceHistoryTable
+                  equipment_id={equipment_id}
+                  mode={mode}
+                  lab_id={lab_id}
+                  scheduleId={record.id}
+                  frequency={record.frequency}
+                  onRefresh={() => {}}
+                />
+              )}
             </div>
           </TableCell>
         </TableRow>

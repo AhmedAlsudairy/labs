@@ -307,58 +307,201 @@ export async function addCalibrationHistory(
     }
 }
 
-// Fix addExternalControlHistory function
+// External Control History function with detailed debugging
 export async function addExternalControlHistory(
     data: ExternalControlHistoryInput,
     lab_id: number,
     equipment_id: number
 ) {
     try {
-        console.log("Adding external control history with data:", JSON.stringify(data, null, 2));
+        console.log(`[DEBUG][${new Date().toISOString()}] ===== EXTERNAL CONTROL HISTORY FUNCTION START =====`);
+        console.log(`[DEBUG][${new Date().toISOString()}] Input parameters:`);
+        console.log(`  • lab_id: ${lab_id}, Type: ${typeof lab_id}`);
+        console.log(`  • equipment_id: ${equipment_id}, Type: ${typeof equipment_id}`);
+        console.log(`[DEBUG][${new Date().toISOString()}] Raw input data:`, JSON.stringify(data, null, 2));
+        console.log(`[DEBUG][${new Date().toISOString()}] Data type check - control_id:`, data.control_id, typeof data.control_id);
+        console.log(`[DEBUG][${new Date().toISOString()}] Data type check - state:`, data.state, typeof data.state);
+        console.log(`[DEBUG][${new Date().toISOString()}] Data type check - external_control_state:`, data.external_control_state, typeof data.external_control_state);
         
         // Get lab information for notifications first
+        console.log(`[DEBUG][${new Date().toISOString()}] Fetching lab information...`);
         const lab = await getLaboratoryById(lab_id);
         if (!lab) {
+            console.error(`[DEBUG][${new Date().toISOString()}] ERROR: Laboratory not found for ID:`, lab_id);
             throw new Error('Laboratory not found');
         }
+        console.log(`[DEBUG][${new Date().toISOString()}] Lab found:`, lab.name);
         
         // Extract frequency from data before inserting
         const { frequency, ...historyData } = data;
+        console.log(`[DEBUG][${new Date().toISOString()}] Extracted frequency:`, frequency);
+        console.log(`[DEBUG][${new Date().toISOString()}] Control ID after destructuring:`, historyData.control_id, typeof historyData.control_id);
 
-        const { data: controlResult, error: historyError } = await supabase
-            .from('equipment_history')
-            .insert({
-                performed_date: historyData.performed_date,
-                completed_date: historyData.completed_date,
-                description: historyData.description,
-                technician_notes: historyData.technician_notes,
-                external_control_id: historyData.external_control_id,
-                work_performed: historyData.work_performed,
-                parts_used: historyData.parts_used,
-                state: historyData.state,
-                external_control_state: historyData.external_control_state
-            })
-            .select()
-            .single();
+        // Create basic insert data without control_id initially
+        console.log(`[DEBUG][${new Date().toISOString()}] Creating insert data object...`);
+        const insertData: any = {
+            performed_date: historyData.performed_date,
+            completed_date: historyData.completed_date,
+            description: historyData.description,
+            technician_notes: historyData.technician_notes,
+            work_performed: historyData.work_performed,
+            parts_used: historyData.parts_used,
+            state: historyData.state,
+            external_control_state: historyData.external_control_state
+            // control_id is handled separately below
+        };
+        
+        // Only add control_id if it's a positive number (real DB record)
+        // Completely omit it for negative IDs (temporary records)
+        if (historyData.control_id && typeof historyData.control_id === 'number' && historyData.control_id > 0) {
+            console.log(`[DEBUG][${new Date().toISOString()}] Adding valid control_id:`, historyData.control_id);
+            insertData.control_id = historyData.control_id;
+        } else {
+            console.log(`[DEBUG][${new Date().toISOString()}] Detected negative control_id (${historyData.control_id}) - OMITTING FIELD COMPLETELY`);
+            // Field is completely omitted from the insert data
+        }
+        
+        // Log each field individually for clarity
+        console.log(`[DEBUG][${new Date().toISOString()}] INSERT DATA DETAILS:`);
+        console.log(`  • control_id:`, insertData.control_id, typeof insertData.control_id);
+        console.log(`  • external_control_state:`, insertData.external_control_state);
+        console.log(`  • performed_date:`, insertData.performed_date);
+        console.log(`  • completed_date:`, insertData.completed_date);
+        console.log(`  • description:`, insertData.description);
+        console.log(`  • technician_notes:`, insertData.technician_notes);
+        console.log(`  • work_performed:`, insertData.work_performed);
+        console.log(`  • parts_used:`, insertData.parts_used);
+        console.log(`[DEBUG][${new Date().toISOString()}] Complete insert data:`, JSON.stringify(insertData, null, 2));
 
-        if (historyError) {
-            console.error("Error inserting external control history:", historyError);
-            throw historyError;
+        // Insert the history record with or without control_id
+        console.log(`[DEBUG][${new Date().toISOString()}] Executing database insert operation...`);
+        console.log(`[DEBUG][${new Date().toISOString()}] Database table: equipment_history`);
+        
+        // Define result variable outside try block so it's available in the outer scope
+        let controlResult: any = null;
+        
+        try {
+            const result = await supabase
+                .from('equipment_history')
+                .insert(insertData)
+                .select()
+                .single();
+
+            // Destructure inside the try block
+            const { data, error: historyError } = result;
+            controlResult = data; // Assign to the outer variable
+
+            if (historyError) {
+                console.error(`[DEBUG][${new Date().toISOString()}] DATABASE ERROR DETAILS:`);
+                console.error(`  • Error code:`, historyError.code);
+                console.error(`  • Error message:`, historyError.message);
+                console.error(`  • Error details:`, historyError.details);
+                console.error(`  • Full error:`, JSON.stringify(historyError, null, 2));
+                throw historyError;
+            }
+            
+            console.log(`[DEBUG][${new Date().toISOString()}] INSERT SUCCESSFUL! Result:`, controlResult);
+        } catch (error) {
+            console.error(`[DEBUG][${new Date().toISOString()}] UNEXPECTED ERROR during database insert:`, error);
+            throw error;
         }
 
-        // Update external control with new next date if state is Done
-        if (data.state === 'Done' as any) { // Type assertion to fix comparison
-            const { error: scheduleError } = await supabase
-                .from('external_control')
-                .update({
-                    next_date: calculateNextDate(frequency || 'monthly'),
-                    state: 'Done',
-                    last_updated: new Date().toISOString(),
-                    updated_by: 'manual'
-                })
-                .eq('control_id', data.external_control_id);
+        // Always update external control with the latest status and next date
+        if (data.control_id && typeof data.control_id === 'number' && data.control_id > 0) {
+            console.log(`[DEBUG][${new Date().toISOString()}] Updating external control #${data.control_id} with new state:`, data.external_control_state);
+            
+            // Create update object
+            const updateData: any = {
+                // Always update the state to match the history entry
+                state: data.external_control_state,
+            };
+            
+            // Add next_date if present
+            if (data.next_date) {
+                updateData.next_date = data.next_date;
+            }
+            
+            // Add last_updated info
+            updateData.last_updated = new Date().toISOString();
+            updateData.updated_by = 'system'; // Or could be user info if available
+            
+            // The external_control table might use a different ID field name than what we're using
+            // Try with more debugging to see exactly what's happening
+            console.log(`[DEBUG][${new Date().toISOString()}] Attempting to update external control in database:`);
+            console.log(`  • Table: external_control`);
+            console.log(`  • ID being used for filter: ${data.control_id}`);
+            console.log(`  • Update payload:`, updateData);
 
-            if (scheduleError) throw scheduleError;
+            // First, try to find the record to confirm it exists
+            let existingControl = null;
+            const { data: controlData, error: findError } = await supabase
+                .from('external_control')
+                .select('*')
+                .eq('control_id', data.control_id)
+                .single();
+                
+            existingControl = controlData;
+
+            if (findError) {
+                console.log(`[DEBUG][${new Date().toISOString()}] Error finding external control record with control_id=${data.control_id}:`, findError);
+                
+                // Try with id instead
+                const { data: altRecord, error: altFindError } = await supabase
+                    .from('external_control')
+                    .select('*')
+                    .eq('id', data.control_id)
+                    .single();
+                    
+                if (altFindError) {
+                    console.log(`[DEBUG][${new Date().toISOString()}] Error finding external control record with id=${data.control_id}:`, altFindError);
+                } else {
+                    console.log(`[DEBUG][${new Date().toISOString()}] Found external control record using id field instead:`, altRecord);
+                    existingControl = altRecord; // This is fine now that existingControl is a let
+                }
+            } else {
+                console.log(`[DEBUG][${new Date().toISOString()}] Found external control record:`, existingControl);
+            }
+
+            // Now try to update using both possible ID field names
+            let updateError = null;
+            
+            // Try control_id first
+            const { error: error1 } = await supabase
+                .from('external_control')
+                .update(updateData)
+                .eq('control_id', data.control_id);
+                
+            if (error1) {
+                console.log(`[DEBUG][${new Date().toISOString()}] Error updating with control_id field:`, error1);
+                updateError = error1;
+                
+                // Try with id as fallback
+                const { error: error2 } = await supabase
+                    .from('external_control')
+                    .update(updateData)
+                    .eq('id', data.control_id);
+                    
+                if (error2) {
+                    console.log(`[DEBUG][${new Date().toISOString()}] Error updating with id field too:`, error2);
+                    updateError = error2;
+                } else {
+                    console.log(`[DEBUG][${new Date().toISOString()}] Successfully updated using id field`);
+                    updateError = null;
+                }
+            } else {
+                console.log(`[DEBUG][${new Date().toISOString()}] Successfully updated using control_id field`);
+            }
+            
+            const scheduleError = updateError;
+
+            if (scheduleError) {
+                console.error(`[DEBUG][${new Date().toISOString()}] Error updating external control:`, scheduleError);
+                // We don't throw this error as the history was already created
+            } else {
+                console.log(`[DEBUG][${new Date().toISOString()}] Successfully updated external control #${data.control_id} with state:`, data.external_control_state);
+            }
+        } else {
+            console.log(`[DEBUG][${new Date().toISOString()}] Cannot update external control - invalid ID:`, data.control_id);
         }
 
         // Send notification emails
@@ -421,7 +564,7 @@ export async function getHistoryByScheduleId(scheduleId: number) {
     return { data };
 }
 
-// Get external control history
+// Get external control history for an equipment
 export async function getExternalControlHistory(equipmentId: number) {
     const { data, error } = await supabase
         .from('equipment_history')
@@ -429,6 +572,19 @@ export async function getExternalControlHistory(equipmentId: number) {
         .eq('equipment_id', equipmentId)
         .is('calibration_schedule_id', null)
         .is('schedule_id', null)
+        .order('performed_date', { ascending: false });
+
+    if (error) return { error };
+    return { data };
+}
+
+// Get history by external control ID
+export async function getHistoryByExternalControlId(externalControlId: number) {
+    console.log("Fetching history for control_id:", externalControlId);
+    const { data, error } = await supabase
+        .from('equipment_history')
+        .select('*')
+        .eq('control_id', externalControlId) // Changed to control_id to match DB schema
         .order('performed_date', { ascending: false });
 
     if (error) return { error };
